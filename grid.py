@@ -28,7 +28,9 @@ class Grid(object):
         self.ghost_spawn  = ghost_spawn
         self.positions = [(0, 0)]*5   # 0: player, 1-4: ghosts
         self.positions[0] = self.player_spawn
-        self.nb_fruits = 255 # TODO
+        self.nb_fruits = 257
+        self.distances = {}
+        self.compute_distances()
 
     def update(self, actions):
         """ 
@@ -81,12 +83,28 @@ class Grid(object):
         Return the list of the possible moves starting from position.
         """
         valid_moves = []
-        if self.grid[position[0] + 1, position[1]] != 64:
-            valid_moves.append('U')
-        if self.grid[position[0] - 1, position[1]] != 64:
-            valid_moves.append('D')
-        if self.grid[position[0], position[1] + 1] != 64:
-            valid_moves.append('R')
-        if self.grid[position[0], position[1] - 1] != 64:
-            valid_moves.append('L')
+        for move, action in self.action_map.items():
+            if self.grid[position + action] != 64:
+                valid_moves.append(move)
         return valid_moves
+
+    def compute_distances(self):
+        """
+        Compute distance between every possible tiles
+        """
+        for x in range(self.grid.shape[0]):
+            for y in range(self.grid.shape[1]):
+                start = (x, y)
+                flags = np.zeros(self.grid.shape)
+                distances = np.zeros(self.grid.shape)
+                queue = [start]
+                while len(queue) > 0:
+                    position = queue.pop()
+                    moves = self.get_valid_moves(position)
+                    new_positions = [position + self.action_map[move] for move in moves]
+                    for new_position in new_positions:
+                        if not flags[new_position]:
+                            flags[new_position] = 1
+                            distances[new_position] = distances[position] + 1
+                            queue = [new_position] + queue
+                self.distances[start] = distances
