@@ -1,53 +1,122 @@
 
+import numpy as np
+import grid
 
 class Ghost(object):
-    
-    behaviour_list = ['random', 'follow', 'flee', 'mixed']
+	"""
+	Class used to represent the different ghosts.
+
+	Building arguments:
+	----------
+	id : the id of the ghost
+	initial_position : the spawn position of the ghost
+	behaviour : the way the ghost behaves
+
+	Arguments:
+	----------
+	id : the id of the ghost 
+	position : the position of the ghost on the grid
+	behaviour : the way the ghost behaves
+
+	Class variables:
+	----------
+	behaviour list: the list of the different possible behaviours
+		- "random": the ghost moves randomly
+		- "follow": the ghost tries to get closer to the pacman
+		- "flee": the ghost tries to get as far as possible from the pacman
+		- "mixed": at each step, the ghost behaves randomly with probability 0.5 
+					and tries to get closer to the pacman with probability 0.5
 	
-	def __init__(self, id, initial_position, behaviour)
+	"""	
+	behaviour_list = ['random', 'follow', 'flee', 'mixed']
+
+	def __init__(self, id, initial_position, behaviour):
 		self.id = id
 		self.position = initial_position
-		if (behaviour not in behaviour_list):
-			print (f'No such behaviour. Must be one of {behaviour_list}.')
+		if (behaviour not in Ghost.behaviour_list):
+			raise Exception(f"No such behaviour. Must be one of {Ghost.behaviour_list}.")
 		else :
 			self.behaviour = behaviour
 
 	def get_id(self):
+		"""
+		Return the id of the ghost.
+		"""
 		return self.id
-	
+
 	def get_position(self):
+		"""
+		Return the position of the ghost.
+		"""
 		return self.position
 
 	def get_behaviour(self):
+		"""
+		Return the way the ghost behaves.
+		"""
 		return self.behaviour
 
 	def step(self, observation):
-		current_position = observation.ghost.id
+		"""
+		Return the move the ghost will perform depending on the its position and the pacman's position.
+		Is one of 'L', 'R', 'U', 'D'.
+		"""
 		if (self.behaviour == 'random'):
-			mouv = self.random_mouv(observation)
+			move = self.random_move(observation)
 		elif (self.behaviour == 'follow'):
-			mouv = self.follow_mouv(observation)
+			move = self.follow_move(observation)
 		elif (self.behaviour == 'flee'):
-			mouv = self.flee_mouv(observation)
+			move = self.flee_move(observation)
 		elif (self.behaviour == 'mixed'):
-			random_draw = np.random()
-			if (random_draw < p):
-				mouv = self.random_mouv(observation)
+			random_draw = np.random.random()
+			if (random_draw < 0.5):
+				move = self.random_move(observation)
 			else :
-				mouv = self.follow_mouv(observation)
+				move = self.follow_move(observation)
 		else :
-			pass 
-		return mouv
-	
-	# mouv : ('L','R','U','D')
-	def random_mouv(self, observation):
-		# TODO : returns a possible random mouv
-		return
+			raise (f"No such behaviour. Must be one of {Ghost.behaviour_list}.")
+		return move
 
-	def follow_mouv(self, observation):
-		# TODO : returns a follow mouv
-		return
+	def random_move(self, observation):
+		"""
+		Return a random possible move.
+		"""
+		possible_moves = observation.grid.get_valid_moves(self.position)
+		random_draw = np.random.random()*len(possible_moves)
+		return possible_moves[int(random_draw)]
 
-	def flee_mouv(self, obersation):
-		# TODO : returns a flee mouv
-		return
+	def follow_move(self, observation):
+		"""
+		Return one of the possible moves which reduces the most the distance between the ghost and the pacman.
+		"""
+		x_pacman, y_pacman = observation.positions.pacman
+
+		move = self.random_move(self.position)
+		x_new, y_new = self.position + grid.Grid.action_map[move]
+		distance_after_move = observation.grid.distances[x_new, y_new][x_pacman, y_pacman]
+
+		for test_move in observation.grid.get_valid_moves(self.position):
+			x_test, y_test = self.position + grid.Grid.action_map[test_move]
+			test_distance = observation.grid.distances[x_test, y_test][x_pacman, y_pacman]
+			if test_distance < distance_after_move :
+				move = test_move
+				distance_after_move = test_distance
+		return move
+
+	def flee_move(self, observation):
+		"""
+		Return one of the possible moves which increases the most the distance between the ghost and the pacman.
+		"""
+		x_pacman, y_pacman = observation.positions.pacman
+
+		move = self.random_move(self.position)
+		x_new, y_new = self.position + grid.Grid.action_map[move]
+		distance_after_move = observation.grid.distances[x_new, y_new][x_pacman, y_pacman]
+
+		for test_move in observation.grid.get_valid_moves(self.position):
+			x_test, y_test = self.position + grid.Grid.action_map[test_move]
+			test_distance = observation.grid.distances[x_test, y_test][x_pacman, y_pacman]
+			if test_distance > distance_after_move :
+				move = test_move
+				distance_after_move = test_distance
+		return move

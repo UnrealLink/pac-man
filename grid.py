@@ -52,4 +52,10 @@ class Grid(object):
             raise Exception("Invalid position")
         if self.grid[position] == 64:
             raise Exception("Invalid position")
+
+    def get_valid_moves(self, position):
+        """
+        Return the list of the possible moves starting from position.
+        """
+        return
         
