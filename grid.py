@@ -1,5 +1,10 @@
 import numpy as np
 
+from utils import index_sum, InvalidIndex
+
+
+np.set_printoptions(linewidth=120)
+
 class Grid(object):
     """ 
     Implements the game board. 25x25 grid with:
@@ -26,8 +31,9 @@ class Grid(object):
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
         self.ghost_spawn  = ghost_spawn
-        self.positions = [(0, 0)]*5   # 0: player, 1-4: ghosts
-        self.positions[0] = self.player_spawn
+        self.positions = [self.player_spawn] + [ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        for i, position in enumerate(self.positions):
+            self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = 257
         self.distances = {}
         self.compute_distances()
@@ -40,7 +46,7 @@ class Grid(object):
         """
         for i, action in enumerate(actions):
             self.grid[self.positions[i]] = self.grid[self.positions[i]] - 2**(i+1)
-            self.positions[i] = self.check_position(self.positions[i] + self.action_map[action])
+            self.positions[i] = self.check_position(index_sum(self.positions[i], self.action_map[action]))
             self.grid[self.positions[i]] = self.grid[self.positions[i]] + 2**(i+1)
         reward = self.compute_reward()
         ended  = self.check_ending()
@@ -52,7 +58,7 @@ class Grid(object):
         """
         position = (position[0]%self.grid.shape[0], position[1]%self.grid.shape[1])
         if self.grid[position] == 64:
-            raise Exception("Invalid position")
+            raise InvalidIndex("Invalid position")
         return position
 
     def compute_reward(self):
@@ -84,8 +90,11 @@ class Grid(object):
         """
         valid_moves = []
         for move, action in self.action_map.items():
-            if self.grid[position + action] != 64:
+            try:
+                new_position = self.check_position(index_sum(position, action))
                 valid_moves.append(move)
+            except InvalidIndex:
+                pass
         return valid_moves
 
     def compute_distances(self):
@@ -95,14 +104,17 @@ class Grid(object):
         for x in range(self.grid.shape[0]):
             for y in range(self.grid.shape[1]):
                 start = (x, y)
+                if self.grid[start] == 64:
+                    continue
                 flags = np.zeros(self.grid.shape)
                 distances = np.zeros(self.grid.shape)
                 queue = [start]
                 while len(queue) > 0:
                     position = queue.pop()
                     moves = self.get_valid_moves(position)
-                    new_positions = [position + self.action_map[move] for move in moves]
+                    new_positions = [index_sum(position, self.action_map[move]) for move in moves]
                     for new_position in new_positions:
+                        new_position = self.check_position(new_position)
                         if not flags[new_position]:
                             flags[new_position] = 1
                             distances[new_position] = distances[position] + 1
