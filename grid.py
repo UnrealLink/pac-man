@@ -1,5 +1,4 @@
 import numpy as np
-np.set_printoptions(linewidth=100)
 
 class Grid(object):
     """ 

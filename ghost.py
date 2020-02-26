@@ -6,12 +6,6 @@ class Ghost(object):
 	"""
 	Class used to represent the different ghosts.
 
-	Building arguments:
-	----------
-	id : the id of the ghost
-	initial_position : the spawn position of the ghost
-	behaviour : the way the ghost behaves
-
 	Arguments:
 	----------
 	id : the id of the ghost 
@@ -58,7 +52,7 @@ class Ghost(object):
 
 	def step(self, observation):
 		"""
-		Return the move the ghost will perform depending on the its position and the pacman's position.
+		Return the move the ghost will perform depending on its position and pacman's position.
 		Is one of 'L', 'R', 'U', 'D'.
 		"""
 		if (self.behaviour == 'random'):
@@ -82,12 +76,13 @@ class Ghost(object):
 		Return a random possible move.
 		"""
 		possible_moves = observation.grid.get_valid_moves(self.position)
-		random_draw = np.random.random()*len(possible_moves)
-		return possible_moves[int(random_draw)]
+		np.random.randint(0, len(possible_moves))
+		random_draw = np.random.randint(0, len(possible_moves))
+		return possible_moves[random_draw]
 
 	def follow_move(self, observation):
 		"""
-		Return one of the possible moves which reduces the most the distance between the ghost and the pacman.
+		Return one of the possible moves which reduces the most the distance between the ghost and pacman.
 		"""
 		x_pacman, y_pacman = observation.positions.pacman
 
