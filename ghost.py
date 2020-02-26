@@ -27,8 +27,8 @@ class Ghost(object):
 	def __init__(self, id, initial_position, behaviour):
 		self.id = id
 		self.position = initial_position
-		if (behaviour not in Ghost.behaviour_list):
-			raise Exception(f"No such behaviour. Must be one of {Ghost.behaviour_list}.")
+		if (behaviour not in self.behaviour_list):
+			raise Exception(f"No such behaviour. Must be one of {self.behaviour_list}.")
 		else :
 			self.behaviour = behaviour
 
@@ -68,15 +68,14 @@ class Ghost(object):
 			else :
 				move = self.follow_move(observation)
 		else :
-			raise (f"No such behaviour. Must be one of {Ghost.behaviour_list}.")
+			raise (f"No such behaviour. Must be one of {self.behaviour_list}.")
 		return move
 
 	def random_move(self, observation):
 		"""
 		Return a random possible move.
 		"""
-		possible_moves = observation.grid.get_valid_moves(self.position)
-		np.random.randint(0, len(possible_moves))
+		possible_moves = observation.get_valid_moves(self.position)
 		random_draw = np.random.randint(0, len(possible_moves))
 		return possible_moves[random_draw]
 
@@ -84,15 +83,15 @@ class Ghost(object):
 		"""
 		Return one of the possible moves which reduces the most the distance between the ghost and pacman.
 		"""
-		x_pacman, y_pacman = observation.positions.pacman
+		x_pacman, y_pacman = observation.positions[0]	# pacman's position
 
 		move = self.random_move(self.position)
-		x_new, y_new = self.position + grid.Grid.action_map[move]
-		distance_after_move = observation.grid.distances[x_new, y_new][x_pacman, y_pacman]
+		x_new, y_new = self.position + observation.action_map[move]
+		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
-		for test_move in observation.grid.get_valid_moves(self.position):
-			x_test, y_test = self.position + grid.Grid.action_map[test_move]
-			test_distance = observation.grid.distances[x_test, y_test][x_pacman, y_pacman]
+		for test_move in observation.get_valid_moves(self.position):
+			x_test, y_test = self.position + observation.action_map[test_move]
+			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance < distance_after_move :
 				move = test_move
 				distance_after_move = test_distance
@@ -102,15 +101,15 @@ class Ghost(object):
 		"""
 		Return one of the possible moves which increases the most the distance between the ghost and the pacman.
 		"""
-		x_pacman, y_pacman = observation.positions.pacman
+		x_pacman, y_pacman = observation.positions[0]
 
 		move = self.random_move(self.position)
-		x_new, y_new = self.position + grid.Grid.action_map[move]
-		distance_after_move = observation.grid.distances[x_new, y_new][x_pacman, y_pacman]
+		x_new, y_new = self.position + observation.action_map[move]
+		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
-		for test_move in observation.grid.get_valid_moves(self.position):
-			x_test, y_test = self.position + grid.Grid.action_map[test_move]
-			test_distance = observation.grid.distances[x_test, y_test][x_pacman, y_pacman]
+		for test_move in observation.get_valid_moves(self.position):
+			x_test, y_test = self.position + observation.action_map[test_move]
+			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance > distance_after_move :
 				move = test_move
 				distance_after_move = test_distance
