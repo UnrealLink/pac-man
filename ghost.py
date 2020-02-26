@@ -1,6 +1,6 @@
 
 import numpy as np
-import grid
+from utils import index_sum
 
 class Ghost(object):
 	"""
@@ -9,7 +9,7 @@ class Ghost(object):
 	Arguments:
 	----------
 	id : the id of the ghost 
-	position : the position of the ghost on the grid
+	position : the position of the ghost on the grid 
 	behaviour : the way the ghost behaves
 
 	Class variables:
@@ -31,24 +31,6 @@ class Ghost(object):
 			raise Exception(f"No such behaviour. Must be one of {self.behaviour_list}.")
 		else :
 			self.behaviour = behaviour
-
-	def get_id(self):
-		"""
-		Return the id of the ghost.
-		"""
-		return self.id
-
-	def get_position(self):
-		"""
-		Return the position of the ghost.
-		"""
-		return self.position
-
-	def get_behaviour(self):
-		"""
-		Return the way the ghost behaves.
-		"""
-		return self.behaviour
 
 	def step(self, observation):
 		"""
@@ -89,7 +71,7 @@ class Ghost(object):
 		distance_after_move = observation.distances[x_ghost, y_ghost][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(self.position):
-			x_test, y_test = self.position + observation.action_map[test_move]
+			x_test, y_test = index_sum(self.position, observation.action_map[test_move])
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance <= distance_after_move :
 				move = test_move
@@ -106,7 +88,7 @@ class Ghost(object):
 		distance_after_move = observation.distances[x_ghost, y_ghost][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(self.position):
-			x_test, y_test = self.position + observation.action_map[test_move]
+			x_test, y_test = index_sum(self.position, observation.action_map[test_move])
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance >= distance_after_move :
 				move = test_move
