@@ -26,7 +26,6 @@ class Ghost(object):
 
 	def __init__(self, id, initial_position, behaviour):
 		self.id = id
-		self.position = initial_position
 		if (behaviour not in self.behaviour_list):
 			raise Exception(f"No such behaviour. Must be one of {self.behaviour_list}.")
 		else :
@@ -57,7 +56,7 @@ class Ghost(object):
 		"""
 		Return a random possible move.
 		"""
-		possible_moves = observation.get_valid_moves(self.position)
+		possible_moves = observation.get_valid_moves(observation.positions[self.id])
 		random_draw = np.random.randint(0, len(possible_moves))
 		return possible_moves[random_draw]
 
@@ -66,14 +65,15 @@ class Ghost(object):
 		Return one of the possible moves which reduces the most the distance between the ghost and pacman.
 		"""
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
-		x_ghost, y_ghost = self.position
 
-		distance_after_move = observation.distances[x_ghost, y_ghost][x_pacman, y_pacman]
+		move = self.random_move(observation)
+		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
-		for test_move in observation.get_valid_moves(self.position):
-			x_test, y_test = index_sum(self.position, observation.action_map[test_move])
+		for test_move in observation.get_valid_moves(observation.positions[self.id]):
+			x_test, y_test = index_sum(observation.positions[self.id], observation.action_map[test_move])
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
-			if test_distance <= distance_after_move :
+			if test_distance < distance_after_move :
 				move = test_move
 				distance_after_move = test_distance
 		return move
@@ -83,14 +83,30 @@ class Ghost(object):
 		Return one of the possible moves which increases the most the distance between the ghost and the pacman.
 		"""
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
-		x_ghost, y_ghost = self.position
 
-		distance_after_move = observation.distances[x_ghost, y_ghost][x_pacman, y_pacman]
+		move = self.random_move(observation)
+		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
-		for test_move in observation.get_valid_moves(self.position):
-			x_test, y_test = index_sum(self.position, observation.action_map[test_move])
+		for test_move in observation.get_valid_moves(observation.positions[self.id]):
+			x_test, y_test = index_sum(observation.positions[self.id], observation.action_map[test_move])
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
-			if test_distance >= distance_after_move :
+			if test_distance > distance_after_move :
 				move = test_move
 				distance_after_move = test_distance
 		return move
+
+if __name__ == "__main__":
+	from grid import Grid
+
+	grid = Grid()
+	ghost1 = Ghost(1, (9, 12), 'random')
+	ghost2 = Ghost(2, (9, 12), 'follow')
+	ghost3 = Ghost(3, (9, 12), 'flee')
+	ghost4 = Ghost(4, (9, 12), 'mixed')
+	ghosts = [ghost1, ghost2, ghost3, ghost4]
+	for i in range(10):
+		actions = ['L' if i%2 else 'R'] + [ghost.step(grid) for ghost in ghosts]
+		print(actions)
+		grid.update(actions)
+		print(grid.grid)
