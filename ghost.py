@@ -32,24 +32,6 @@ class Ghost(object):
 		else :
 			self.behaviour = behaviour
 
-	def get_id(self):
-		"""
-		Return the id of the ghost.
-		"""
-		return self.id
-
-	def get_position(self):
-		"""
-		Return the position of the ghost.
-		"""
-		return self.position
-
-	def get_behaviour(self):
-		"""
-		Return the way the ghost behaves.
-		"""
-		return self.behaviour
-
 	def step(self, observation):
 		"""
 		Return the move the ghost will perform depending on its position and pacman's position.
