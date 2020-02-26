@@ -1,4 +1,4 @@
 
 
-class Ghost:
+class Ghost(object):
     pass

@@ -1,4 +1,4 @@
 
 
-class Grid:
+class Grid(object):
     pass
