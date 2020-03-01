@@ -1,5 +1,5 @@
 import numpy as np
-import pygame
+# import pygame
 import sys
 import math
 
@@ -23,28 +23,28 @@ class Grid(object):
     """
 
     action_map = {
-        'U': (1, 0),
-        'D': (-1, 0),
+        'D': (1, 0),
+        'U': (-1, 0),
         'R': (0, 1),
         'L': (0, -1)
     }
 
-    def __init__(self, player_spawn=(15, 12), ghost_spawn=(9, 12)):
-        with open("board.txt", 'r') as board_file:
+    def __init__(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12)):
+        with open(board, 'r') as board_file:
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
         self.ghost_spawn  = ghost_spawn
-        self.positions = [self.player_spawn] + [ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = 257
         self.distances = {}
         self.compute_distances()
 
-        SQUARESIZE = 30
-        ROW_COUNT, COLUMN_COUNT = self.grid.shape
-        screen = pygame.display.set_mode((COLUMN_COUNT * SQUARESIZE, ROW_COUNT * SQUARESIZE))
-        pygame.init()
+        # SQUARESIZE = 30
+        # ROW_COUNT, COLUMN_COUNT = self.grid.shape
+        # screen = pygame.display.set_mode((COLUMN_COUNT * SQUARESIZE, ROW_COUNT * SQUARESIZE))
+        # pygame.init()
 
 
     def update(self, actions):
@@ -76,9 +76,10 @@ class Grid(object):
         Remove the fruit if needed
         """
         if self.grid[self.positions[0]] & 1:
-            # reward
             self.grid[self.positions[0]] = self.grid[self.positions[0]] - 1
             self.nb_fruits -= 1
+            if self.nb_fruits == 0:
+                return 101
             return 1
         return 0
 
@@ -130,59 +131,60 @@ class Grid(object):
                             queue = [new_position] + queue
                             self.distances[start] = distances
 
-    def draw_board(self):
 
-        BLUE = (0,0,255)
-        BLACK = (0,0,0)
-        RED = (255,0,0)
-        YELLOW = (255,255,0)
-        CYAN = (0,255,255)
-        GREY = (128,128,128)
-        PURPLE = (238,130,238)
-        ORANGE = (255,165,0)
+    # def draw_board(self):
 
-        SQUARESIZE = 30
-        RADIUS = 5
+    #     BLUE = (0,0,255)
+    #     BLACK = (0,0,0)
+    #     RED = (255,0,0)
+    #     YELLOW = (255,255,0)
+    #     CYAN = (0,255,255)
+    #     GREY = (128,128,128)
+    #     PURPLE = (238,130,238)
+    #     ORANGE = (255,165,0)
 
-        board = self.grid
+    #     SQUARESIZE = 30
+    #     RADIUS = 5
 
-        ROW_COUNT, COLUMN_COUNT = board.shape
+    #     board = self.grid
 
-        width = COLUMN_COUNT * SQUARESIZE
-        height = ROW_COUNT * SQUARESIZE
+    #     ROW_COUNT, COLUMN_COUNT = board.shape
 
-        size = (width, height)
+    #     width = COLUMN_COUNT * SQUARESIZE
+    #     height = ROW_COUNT * SQUARESIZE
 
-
-        screen = pygame.display.set_mode(size)
+    #     size = (width, height)
 
 
-        for c in range(COLUMN_COUNT):
-            for r in range(ROW_COUNT):
-                pygame.draw.rect(screen, BLACK, (c*SQUARESIZE, r*SQUARESIZE+SQUARESIZE, SQUARESIZE, SQUARESIZE))
-                if board[r,c] == 1 :
-                    pygame.draw.circle(screen, YELLOW, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS)
-                elif board[r,c] == 2 :
-                    pygame.draw.circle(screen, YELLOW, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                elif board[r,c] == 4 :
-                    pygame.draw.circle(screen, RED, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                elif board[r,c] == 8 :
-                    pygame.draw.circle(screen, CYAN, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                elif board[r,c] == 16 :
-                    pygame.draw.circle(screen, ORANGE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                elif board[r,c] == 32 :
-                    pygame.draw.circle(screen, PURPLE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                elif board[r,c] == 64 :
-                    pygame.draw.rect(screen, BLUE, (c*SQUARESIZE, r*SQUARESIZE+SQUARESIZE, SQUARESIZE, SQUARESIZE))
-                else : 
-                    case = np.binary_repr(board[r,c], width=7)
-                    if case[2] == '1' :
-                        pygame.draw.circle(screen, RED, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                    elif case[3] == '1' :
-                        pygame.draw.circle(screen, CYAN, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                    elif case[4] == '1' :
-                        pygame.draw.circle(screen, ORANGE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
-                    elif case[5] == '1' : 
-                        pygame.draw.circle(screen, PURPLE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #     screen = pygame.display.set_mode(size)
 
-            pygame.display.update()
+
+    #     for c in range(COLUMN_COUNT):
+    #         for r in range(ROW_COUNT):
+    #             pygame.draw.rect(screen, BLACK, (c*SQUARESIZE, r*SQUARESIZE+SQUARESIZE, SQUARESIZE, SQUARESIZE))
+    #             if board[r,c] == 1 :
+    #                 pygame.draw.circle(screen, YELLOW, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS)
+    #             elif board[r,c] == 2 :
+    #                 pygame.draw.circle(screen, YELLOW, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #             elif board[r,c] == 4 :
+    #                 pygame.draw.circle(screen, RED, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #             elif board[r,c] == 8 :
+    #                 pygame.draw.circle(screen, CYAN, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #             elif board[r,c] == 16 :
+    #                 pygame.draw.circle(screen, ORANGE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #             elif board[r,c] == 32 :
+    #                 pygame.draw.circle(screen, PURPLE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #             elif board[r,c] == 64 :
+    #                 pygame.draw.rect(screen, BLUE, (c*SQUARESIZE, r*SQUARESIZE+SQUARESIZE, SQUARESIZE, SQUARESIZE))
+    #             else : 
+    #                 case = np.binary_repr(board[r,c], width=7)
+    #                 if case[2] == '1' :
+    #                     pygame.draw.circle(screen, RED, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #                 elif case[3] == '1' :
+    #                     pygame.draw.circle(screen, CYAN, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #                 elif case[4] == '1' :
+    #                     pygame.draw.circle(screen, ORANGE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+    #                 elif case[5] == '1' : 
+    #                     pygame.draw.circle(screen, PURPLE, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS*2)
+
+    #         pygame.display.update()
