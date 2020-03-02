@@ -45,6 +45,7 @@ class Gui(object):
 	RADIUS = 5
 
 	def __init__(self, grid):
+		pygame.init()
 		self.grid = grid
 		self.row_number, self.column_number = self.grid.shape
 		print (self.grid.shape)
@@ -105,12 +106,11 @@ class Gui(object):
 
 
 if __name__ == "__main__":
-	from grid import Grid
+	from pacman import Env
 	from ghost import Ghost
 
-	grid = Grid()
-	grid.create()
-	grid.gui.render()
+	env = Env(gui_display=True)
+	env.render()
 
 	ghost1 = Ghost(1, 'random')
 	ghost2 = Ghost(2, 'follow')
@@ -120,6 +120,6 @@ if __name__ == "__main__":
 
 	for i in range(100):
 		pygame.time.wait(250)
-		actions = ['L' if i%2 else 'R'] + [ghost.step(grid) for ghost in ghosts]
-		grid.update(actions)
-		grid.gui.render()
+		action = 'L' if i%2 else 'R'
+		env.step(action)
+		env.render()
