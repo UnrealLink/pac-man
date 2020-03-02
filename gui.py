@@ -109,6 +109,7 @@ if __name__ == "__main__":
 	from ghost import Ghost
 
 	grid = Grid()
+	grid.create()
 	grid.gui.render()
 
 	ghost1 = Ghost(1, 'random')

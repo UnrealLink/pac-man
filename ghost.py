@@ -67,11 +67,11 @@ class Ghost(object):
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
 
 		move = self.random_move(observation)
-		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		x_new, y_new = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[move]))
 		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(observation.positions[self.id]):
-			x_test, y_test = index_sum(observation.positions[self.id], observation.action_map[test_move])
+			x_test, y_test = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[test_move]))
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance < distance_after_move :
 				move = test_move
@@ -85,11 +85,11 @@ class Ghost(object):
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
 
 		move = self.random_move(observation)
-		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		x_new, y_new = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[move]))
 		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(observation.positions[self.id]):
-			x_test, y_test = index_sum(observation.positions[self.id], observation.action_map[test_move])
+			x_test, y_test = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[test_move]))
 			test_distance = observation.distances[x_test, y_test][x_pacman, y_pacman]
 			if test_distance > distance_after_move :
 				move = test_move
