@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from collections import deque
 
 import torch
 import torch.nn as nn
@@ -62,6 +63,29 @@ class Agent(nn.Module):
         if self.epsilon > self.epsilon_min:
             self.epsilon = self.epsilon - self.epsilon_decay
 
+def train(env, agent, optimizer, loss, buffer_size,
+start_computing_loss = 10, n_episode = 5):
+    buffer = deque(maxlen = buffer_size)
+    
+    n_move = 0
+    for i in range(n_episode):
+        ended = False
+        observation = env.reset()
+        while not ended:
+            a = agent.action(observation)
+            next_observation, reward, ended, _ = env.step(a)
+            buffer.append([observation, a, reward, next_observation, ended])
+            if n_move % start_computing_loss ==0 & n_move > start_computing_loss:
+                
+
+
+
+
+
+
+
+
+    raise NotImplementedError
 
 if __name__ == "__main__":
     grid = Grid()
@@ -69,3 +93,15 @@ if __name__ == "__main__":
     agent = Agent()
     input = agent.process_input(grid)
     print(agent.forward(input))
+
+    n_epoch = 1
+    learning_rate = 0.001
+    buffer_size = 100
+
+    loss = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
+
+
+
+
+

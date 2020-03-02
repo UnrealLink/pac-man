@@ -83,6 +83,7 @@ class Env(object):
         """
         self.grid = create(self.board)
         self.seed(self.base_seed)
+        return self.grid
 
     def render(self, mode='human'):
         """Renders the environment.
