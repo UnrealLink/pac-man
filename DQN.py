@@ -73,12 +73,24 @@ class Agent(nn.Module):
     def decay(self):
         if self.epsilon > self.epsilon_min:
             self.epsilon = self.epsilon - self.epsilon_decay
+    
+    def target_prediction(self, batch, target_agent):
+        target_batch = numpy.zeros_like(batch)
+        for j in range(len(batch)):
+            batch_obs, batch_action, batch_reward, batch_next_obs = batch[j]
+            if ended: 
+                target_batch[j] = batch_reward
+            else:
+                next_target_action = target_agent.action(batch_next_observation)
+                target_batch[j] = batch_reward + gamma * target_agent.score(batch_next_observation)
+        return target_batch
 
 def train(env, agent, optimizer, loss, buffer_size,
-start_computing_loss = 10, n_episode = 5):
+start_computing_loss = 10, update_target_agent = 100, n_episode = 5):
     buffer = deque(maxlen = buffer_size)
-    
+    loss_results = []
     n_move = 0
+
     for i in range(n_episode):
         ended = False
         observation = env.reset()
@@ -86,8 +98,21 @@ start_computing_loss = 10, n_episode = 5):
             a = agent.action(observation)
             next_observation, reward, ended, _ = env.step(a)
             buffer.append([observation, a, reward, next_observation, ended])
-            if n_move % start_computing_loss ==0 & n_move > start_computing_loss:
-                
+            
+            if (n_move % start_computing_loss == 0) and (n_move > start_computing_loss):
+                shuffled_buffer = np.random.permutation(buffer)
+                batch = shuffled_buffer[:batch_size]
+                target_batch = target_agent.target_prediction(batch)
+
+                batch = nn.Tensor(batch)
+                target_batch = nn.Tensor(target_batch)
+                batch_loss = loss(batch, target_batch)
+                loss_results.append(batch_loss)
+                loss.backward()
+                optimizer.step()
+
+            if n_move == update_target_agent:
+                target_prediction.update_weights(agent)
 
 
 
