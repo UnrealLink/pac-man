@@ -2,17 +2,11 @@ import gym
 from gym import error
 from gym.utils import closer
 from gym import spaces
-
 import numpy as np
 
-class Moves(spaces.Space):
-    moves = ['U', 'D', 'L', 'R']
+from grid import Grid
+from ghost import Ghost
 
-    def sample(self):
-        return self.moves[np.random.randint(0, len(self.moves))]
-
-    def contains(self, x):
-        return x in self.moves
 
 env_closer = closer.Closer()
 
@@ -40,6 +34,23 @@ class Env(object):
     metadata = {'render.modes': []}
     reward_range = (-float('inf'), float('inf'))
     spec = None
+    #TODO: set observation range and reward range
+
+    def __init__(self, board="board.txt", seed=None):
+        """
+        Create a pacman env from a txt grid
+        """
+        self.board = board
+        self.grid = Grid(board)
+        self.base_seed = seed
+        self.seed(self.base_seed)
+        self.ghosts = []
+        ghost1 = Ghost(1, 'random')
+        ghost2 = Ghost(2, 'follow')
+        ghost3 = Ghost(3, 'flee')
+        ghost4 = Ghost(4, 'mixed')
+        self.ghosts = [ghost1, ghost2, ghost3, ghost4]
+        self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
 
     # Set these in ALL subclasses
     action_space = None
@@ -58,14 +69,20 @@ class Env(object):
             done (bool): whether the episode has ended, in which case further step() calls will return undefined results
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
-        raise NotImplementedError
+        actions = [action]
+        for ghost in self.ghosts:
+            actions.append(ghost.step(self.grid))
+        reward, ended = self.grid.update(actions)
+        self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
+        return self.grid, reward, ended, {}
 
     def reset(self):
         """Resets the state of the environment and returns an initial observation.
         Returns:
             observation (object): the initial observation.
         """
-        raise NotImplementedError
+        self.grid = Grid(self.board)
+        self.seed(self.base_seed)
 
     def render(self, mode='human'):
         """Renders the environment.
@@ -97,7 +114,9 @@ class Env(object):
                 else:
                     super(MyEnv, self).render(mode=mode) # just raise an exception
         """
-        raise NotImplementedError
+        #TODO
+        print(self.grid.grid)
+        print()
 
     def close(self):
         """Override close in your subclass to perform any necessary cleanup.
@@ -119,6 +138,7 @@ class Env(object):
               'seed'. Often, the main seed equals the provided 'seed', but
               this won't be true if seed=None, for example.
         """
+        np.random.seed(seed)
         return
 
     @property
@@ -144,3 +164,15 @@ class Env(object):
         self.close()
         # propagate exception
         return False
+
+if __name__ == "__main__":
+    env = Env()
+    ended = False
+    score = 0
+    while not ended:
+        actions = env.action_space
+        action = actions[np.random.randint(0, len(actions))]
+        obs, reward, ended, info = env.step(action)
+        score += reward
+        env.render()
+    print(score)

@@ -24,7 +24,7 @@ class Ghost(object):
 	"""	
 	behaviour_list = ['random', 'follow', 'flee', 'mixed']
 
-	def __init__(self, id, initial_position, behaviour):
+	def __init__(self, id, behaviour):
 		self.id = id
 		if (behaviour not in self.behaviour_list):
 			raise Exception(f"No such behaviour. Must be one of {self.behaviour_list}.")
@@ -100,10 +100,10 @@ if __name__ == "__main__":
 	from grid import Grid
 
 	grid = Grid()
-	ghost1 = Ghost(1, (9, 12), 'random')
-	ghost2 = Ghost(2, (9, 12), 'follow')
-	ghost3 = Ghost(3, (9, 12), 'flee')
-	ghost4 = Ghost(4, (9, 12), 'mixed')
+	ghost1 = Ghost(1, 'random')
+	ghost2 = Ghost(2, 'follow')
+	ghost3 = Ghost(3, 'flee')
+	ghost4 = Ghost(4, 'mixed')
 	ghosts = [ghost1, ghost2, ghost3, ghost4]
 	for i in range(10):
 		actions = ['L' if i%2 else 'R'] + [ghost.step(grid) for ghost in ghosts]
