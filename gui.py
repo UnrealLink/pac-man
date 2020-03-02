@@ -111,10 +111,10 @@ if __name__ == "__main__":
 	grid = Grid()
 	grid.gui.render()
 
-	ghost1 = Ghost(1, (9, 12), 'random')
-	ghost2 = Ghost(2, (9, 12), 'follow')
-	ghost3 = Ghost(3, (9, 12), 'flee')
-	ghost4 = Ghost(4, (9, 12), 'mixed')
+	ghost1 = Ghost(1, 'random')
+	ghost2 = Ghost(2, 'follow')
+	ghost3 = Ghost(3, 'flee')
+	ghost4 = Ghost(4, 'mixed')
 	ghosts = [ghost1, ghost2, ghost3, ghost4]
 
 	for i in range(100):
