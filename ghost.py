@@ -67,7 +67,7 @@ class Ghost(object):
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
 
 		move = self.random_move(observation)
-		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		x_new, y_new = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[move]))
 		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(observation.positions[self.id]):
@@ -85,7 +85,7 @@ class Ghost(object):
 		x_pacman, y_pacman = observation.positions[0]	# pacman's position
 
 		move = self.random_move(observation)
-		x_new, y_new = index_sum(observation.positions[self.id], observation.action_map[move])
+		x_new, y_new = observation.check_position(index_sum(observation.positions[self.id], observation.action_map[move]))
 		distance_after_move = observation.distances[x_new, y_new][x_pacman, y_pacman]
 
 		for test_move in observation.get_valid_moves(observation.positions[self.id]):
