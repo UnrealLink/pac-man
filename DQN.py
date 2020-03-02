@@ -15,6 +15,10 @@ class Agent(nn.Module):
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=2)
         self.fc     = nn.Linear(288, 4)
 
+        nn.init.xavier_normal(self.layer1.weight)
+        nn.init.xavier_normal(self.layer2.weight)
+        nn.init.xavier_normal(self.fc.weight)
+
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -51,11 +55,8 @@ class Agent(nn.Module):
         x = torch.sigmoid(x)
         return x
 
-    def update_weights(self, weights):
-        raise NotImplementedError
-
-    def get_weights(self):
-        raise NotImplementedError
+    def update_weights(self, model):
+        self.load_state_dict(model.state_dict())
 
     def decay(self):
         if self.epsilon > self.epsilon_min:
