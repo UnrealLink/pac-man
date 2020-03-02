@@ -74,10 +74,10 @@ class Agent(nn.Module):
         if self.epsilon > self.epsilon_min:
             self.epsilon = self.epsilon - self.epsilon_decay
     
-    def target_prediction(self, batch, target_agent):
-        target_batch = numpy.zeros_like(batch)
+    def target_prediction(self, batch, target_agent, gamma):
+        target_batch = np.zeros_like(batch)
         for j in range(len(batch)):
-            batch_obs, batch_action, batch_reward, batch_next_obs = batch[j]
+            batch_obs, batch_action, batch_reward, batch_next_obs, ended = batch[j]
             if ended: 
                 target_batch[j] = batch_reward
             else:
@@ -85,8 +85,8 @@ class Agent(nn.Module):
                 target_batch[j] = batch_reward + gamma * target_agent.score(batch_next_observation)
         return target_batch
 
-def train(env, agent, optimizer, loss, buffer_size,
-start_computing_loss = 10, update_target_agent = 100, n_episode = 5):
+def train(env, agent, target_agent, optimizer, loss, buffer_size, batch_size,
+          start_computing_loss = 10, update_target_agent = 100, gamma=0.95, n_episode = 5):
     buffer = deque(maxlen = buffer_size)
     loss_results = []
     n_move = 0
@@ -97,22 +97,22 @@ start_computing_loss = 10, update_target_agent = 100, n_episode = 5):
         while not ended:
             a = agent.action(observation)
             next_observation, reward, ended, _ = env.step(a)
-            buffer.append([observation, a, reward, next_observation, ended])
-            
+            buffer.append([observation, a, reward, next_obs, ended])
+
             if (n_move % start_computing_loss == 0) and (n_move > start_computing_loss):
                 shuffled_buffer = np.random.permutation(buffer)
                 batch = shuffled_buffer[:batch_size]
-                target_batch = target_agent.target_prediction(batch)
+                target_batch = target_agent.target_prediction(batch, target_agent, gamma)
 
-                batch = nn.Tensor(batch)
-                target_batch = nn.Tensor(target_batch)
+                batch = torch.Tensor(batch)
+                target_batch = torch.Tensor(target_batch)
                 batch_loss = loss(batch, target_batch)
                 loss_results.append(batch_loss)
                 loss.backward()
                 optimizer.step()
 
             if n_move == update_target_agent:
-                target_prediction.update_weights(agent)
+                target_agent.update_weights(agent)
 
 
 if __name__ == "__main__":
