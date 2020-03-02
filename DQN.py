@@ -75,15 +75,15 @@ class Agent(nn.Module):
             self.epsilon = self.epsilon - self.epsilon_decay
     
     def target_prediction(self, batch, target_agent, gamma):
-        target_batch = np.zeros_like(batch)
+        target_score = np.zeros(len(batch))
         for j in range(len(batch)):
             batch_obs, batch_action, batch_reward, batch_next_obs, ended = batch[j]
             if ended: 
-                target_batch[j] = batch_reward
+                target_score[j] = batch_reward
             else:
-                next_target_action = target_agent.action(batch_next_observation)
-                target_batch[j] = batch_reward + gamma * target_agent.score(batch_next_observation)
-        return target_batch
+                next_target_action = target_agent.action(batch_next_obs)
+                target_score[j] = batch_reward + gamma * target_agent.score(batch_next_obs)
+        return target_score
 
 def train(env, agent, target_agent, optimizer, loss, buffer_size, batch_size,
           start_computing_loss = 10, update_target_agent = 100, gamma=0.95, n_episode = 5):
@@ -102,11 +102,11 @@ def train(env, agent, target_agent, optimizer, loss, buffer_size, batch_size,
             if (n_move % start_computing_loss == 0) and (n_move > start_computing_loss):
                 shuffled_buffer = np.random.permutation(buffer)
                 batch = shuffled_buffer[:batch_size]
-                target_batch = target_agent.target_prediction(batch, target_agent, gamma)
+                target_score = target_agent.target_prediction(batch, target_agent, gamma)
 
                 batch = torch.Tensor(batch)
-                target_batch = torch.Tensor(target_batch)
-                batch_loss = loss(batch, target_batch)
+                target_score = torch.Tensor(target_score)
+                batch_loss = loss(batch, target_score)
                 loss_results.append(batch_loss)
                 loss.backward()
                 optimizer.step()
