@@ -43,6 +43,18 @@ class Agent(nn.Module):
                 best_move = move
         return best_move
 
+    def score(self, observation):
+        actions = observation.action_map.keys()
+        valid_moves = observation.get_valid_moves(observation.positions[0])
+        probas = self.forward(self.process_input(observation))
+        
+        max_proba = 0
+        for move in valid_moves:
+            proba = probas[actions.index(move)]
+            if proba > max_proba:
+                max_proba = proba
+        return max_proba
+
     def process_input(self, observation):
         x = np.stack([
             ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, 25, 25)) for i in range(8)
@@ -53,7 +65,6 @@ class Agent(nn.Module):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
         x = self.fc(x.view(-1))
-        x = torch.sigmoid(x)
         return x
 
     def update_weights(self, model):
