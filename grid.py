@@ -56,6 +56,7 @@ class Grid(object):
         new_grid.positions = list(grid.positions)
         new_grid.nb_fruits = grid.nb_fruits
         new_grid.distances = grid.distances
+        return new_grid
 
     def update(self, actions):
         """ 
