@@ -6,6 +6,7 @@ import numpy as np
 from grid import Grid
 from ghost import Ghost
 
+
 env_closer = closer.Closer()
 
 
@@ -48,7 +49,6 @@ class Env(object):
         ghost3 = Ghost(3, 'flee')
         ghost4 = Ghost(4, 'mixed')
         self.ghosts = [ghost1, ghost2, ghost3, ghost4]
-        #TODO: change action space to space object in gym ai
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
 
     # Set these in ALL subclasses
