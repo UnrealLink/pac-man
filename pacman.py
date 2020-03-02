@@ -2,9 +2,11 @@ import gym
 from gym import error
 from gym.utils import closer
 import numpy as np
+import pygame
 
 from grid import Grid
 from ghost import Ghost
+from gui import Gui
 
 
 env_closer = closer.Closer()
@@ -35,7 +37,7 @@ class Env(object):
     spec = None
     #TODO: set observation range and reward range
 
-    def __init__(self, board="board.txt", seed=None):
+    def __init__(self, board="board.txt", seed=None, gui_display=False):
         """
         Create a pacman env from a txt grid
         """
@@ -51,6 +53,9 @@ class Env(object):
         ghost4 = Ghost(4, 'mixed')
         self.ghosts = [ghost1, ghost2, ghost3, ghost4]
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
+        self.gui = None
+        if gui_display:
+            self.gui = Gui(self.grid.grid)
 
     # Set these in ALL subclasses
     action_space = None
@@ -115,9 +120,8 @@ class Env(object):
                 else:
                     super(MyEnv, self).render(mode=mode) # just raise an exception
         """
-        #TODO
-        print(self.grid.grid)
-        print()
+        if self.gui:
+            self.gui.render()
 
     def close(self):
         """Override close in your subclass to perform any necessary cleanup.

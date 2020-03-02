@@ -1,6 +1,5 @@
 import numpy as np
 import pygame
-from gui import Gui
 from hashlib import sha1
 
 from utils import index_sum, InvalidIndex
@@ -32,7 +31,7 @@ class Grid(object):
     def __init__(self):
         pass
 
-    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12), gui_display=False):
+    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12)):
         with open(board, 'r') as board_file:
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
@@ -43,10 +42,6 @@ class Grid(object):
         self.nb_fruits = 257
         self.distances = {}
         self.compute_distances()
-
-        if gui_display:
-            pygame.init()
-            self.gui = Gui(self.grid)
 
     @classmethod
     def copy(cls, grid):
