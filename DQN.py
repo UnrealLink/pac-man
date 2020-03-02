@@ -115,14 +115,6 @@ start_computing_loss = 10, update_target_agent = 100, n_episode = 5):
                 target_prediction.update_weights(agent)
 
 
-
-
-
-
-
-
-    raise NotImplementedError
-
 if __name__ == "__main__":
     grid = Grid()
     grid.create(gui_display=False)

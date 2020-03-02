@@ -32,7 +32,7 @@ class Grid(object):
     def __init__(self):
         pass
 
-    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12), gui_display=True):
+    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12), gui_display=False):
         with open(board, 'r') as board_file:
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
