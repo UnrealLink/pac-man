@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
 
+import utils
 from pacman import Env
 
 # Meta parameters for the RL agent
@@ -15,17 +16,17 @@ epsilon_decay = 0.999
 verbose = True
 
 act_to_letter = {
-        0 : 'D',
-        1 : 'U',
-        2 : 'R',
-        3 : 'L'
+        0 : 'U',
+        1 : 'L',
+        2 : 'D',
+        3 : 'R'
 }
 
-letter_to_space = {
-        'D' : 0,
-        'U' : 1,
-        'R' : 2,
-        'L' : 3
+letter_to_act = {
+        'U' : 0,
+        'L' : 1,
+        'D' : 2,
+        'R' : 3
 }
 
 def coord_to_state (coords):
@@ -33,6 +34,62 @@ def coord_to_state (coords):
 
 def state_to_coords (state):
     return (state//25, state%25)
+
+def get_closest_fruits(location):
+    # TODO : return the distance to the closest fruit starting from position location. the returned list should have the structure:
+    # [distance_if_going_up, distance_if_going_left, distance_if_going_down, distance_if_going_up]
+    pass
+
+
+def grid_to_state(grid):
+    """
+    Compute the state (vector of size 10) given a Grid object that represents the current observation. 
+    The goal is to simplify the observation space.
+    """
+    state = np.zeros(10)
+    pacman_location = grid.position[0]
+    ghosts_location = grid.position[1:]
+
+    pacman_possible_moves = grid.get_valid_moves(pacman_location)
+
+    for move in letter_to_act.keys():
+        if move not in pacman_possible_moves:
+            state[letter_to_act[move]] = 1
+    
+    min_distance_to_ghost_tab = -1*np.ones(4)
+    dangerous_path_counter = 0
+    non_dangerous_path_counter = 0
+    for move in pacman_possible_moves:
+        test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        min_distance_to_ghost = min([grid.distances[test_move][ghost_location] for ghost_location in ghosts_location[ghost_location]])
+        min_distance_to_ghost_tab[letter_to_act[move]] = min_distance_to_ghost
+        if min_distance_to_ghost < 8 :
+            dangerous_path_counter += 1
+        else :
+            non_dangerous_path_counter +=1
+    if dangerous_path_counter == len(pacman_possible_moves) or non_dangerous_path_counter == 1:
+        state[4] = min_distance_to_ghost_tab.argmax()
+    else:
+        safe_moves = np.where(min_distance_to_ghost_tab > 8)
+        distances_to_fruits = get_closest_fruits(pacman_location)
+        state[4] = np.array([distances_to_fruits[i] for i in safe_moves]).argmin()    
+
+    for move in pacman_possible_moves:
+        test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        for ghost_location in ghosts_location:
+            if grid.distances[test_move][ghost_location] < 8:
+                state[5+letter_to_act[move]] = 1
+
+    # since the ghosts can cut back, we only consider pacman as trapped when he will reach a ghost position whatever the move he makes
+    is_trapped = np.zeros(len(pacman_possible_moves))
+    for i, move in enumerate(pacman_possible_moves):
+        test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        for ghost_location in ghosts_location:
+            if test_move == ghost_location:
+                is_trapped[i] = 1
+    state[9] = int(is_trapped.sum()/len(pacman_possible_moves))
+    
+    return state
 
 # Act with epsilon greedy
 def act_with_epsilon_greedy(s, q, env):
@@ -85,7 +142,7 @@ def main():
     # Recover State-Action space size
     #TODO a modifer quand on aura les clases action space et Moves 
     n_a = 4 #env.action_space.n
-    n_s =   63*25*25 #env.observation_space.n
+    n_s = 63*25*25 #env.observation_space.n
 
     # Experimental setup
     n_episode = 10000
