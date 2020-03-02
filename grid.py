@@ -28,7 +28,10 @@ class Grid(object):
         'L': (0, -1)
     }
 
-    def __init__(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12), gui_display=True):
+    def __init__(self):
+        pass
+
+    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12), gui_display=True):
         with open(board, 'r') as board_file:
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
@@ -44,6 +47,15 @@ class Grid(object):
             pygame.init()
             self.gui = Gui(self.grid)
 
+    @classmethod
+    def copy(cls, grid):
+        new_grid = Grid()
+        new_grid.grid = np.copy(grid.grid)
+        new_grid.player_spawn = grid.player_spawn
+        new_grid.ghost_spawn  = grid.ghost_spawn
+        new_grid.positions = list(grid.positions)
+        new_grid.nb_fruits = grid.nb_fruits
+        new_grid.distances = grid.distances
 
     def update(self, actions):
         """ 

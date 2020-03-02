@@ -64,7 +64,8 @@ class Agent(nn.Module):
 
 
 if __name__ == "__main__":
-    grid = Grid(gui_display=False)
+    grid = Grid()
+    grid.create(gui_display=False)
     agent = Agent()
     input = agent.process_input(grid)
     print(agent.forward(input))

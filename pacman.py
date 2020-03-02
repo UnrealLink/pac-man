@@ -40,7 +40,8 @@ class Env(object):
         Create a pacman env from a txt grid
         """
         self.board = board
-        self.grid = Grid(board)
+        self.grid = Grid()
+        self.grid.create(board)
         self.base_seed = seed
         self.seed(self.base_seed)
         self.ghosts = []
@@ -80,7 +81,7 @@ class Env(object):
         Returns:
             observation (object): the initial observation.
         """
-        self.grid = Grid(self.board)
+        self.grid = create(self.board)
         self.seed(self.base_seed)
 
     def render(self, mode='human'):
