@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
 from gui import Gui
+from hashlib import sha1
 
 from utils import index_sum, InvalidIndex
 
@@ -117,6 +118,13 @@ class Grid(object):
             except InvalidIndex:
                 pass
         return valid_moves
+
+    def __hash__(self):
+        """
+        hash function for grid.
+        The grid becomes unwriteable after calling this funciton
+        """
+        return sha1(self.grid.grid)
 
     def compute_distances(self):
         """
