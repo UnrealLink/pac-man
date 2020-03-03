@@ -80,6 +80,7 @@ def grid_to_state(grid):
     non_dangerous_path_counter = 0
     for move in pacman_possible_moves:
         test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        test_move = grid.check_position(test_move)
         min_distance_to_ghost = min([grid.distances[test_move][ghost_location] for ghost_location in ghosts_location])
         min_distance_to_ghost_tab[letter_to_act[move]] = min_distance_to_ghost
         if min_distance_to_ghost < 8 :
@@ -101,6 +102,7 @@ def grid_to_state(grid):
     # s6
     for move in pacman_possible_moves:
         test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        test_move = grid.check_position(test_move)
         for ghost_location in ghosts_location:
             if grid.distances[test_move][ghost_location] < 8:
                 state[5+letter_to_act[move]] = 1
@@ -109,6 +111,7 @@ def grid_to_state(grid):
     is_trapped = np.zeros(len(pacman_possible_moves))
     for i, move in enumerate(pacman_possible_moves):
         test_move = utils.index_sum(pacman_location, grid.action_map[move])
+        test_move = grid.check_position(test_move)
         for ghost_location in ghosts_location:
             if test_move == ghost_location:
                 is_trapped[i] = 1
@@ -206,31 +209,31 @@ def main():
         a = act_with_epsilon_greedy(index, q_table, env)
 
         for i_step in range(max_horizon):
-
+            
             # Act
-            obsevation_prime, r, done, _ = env.step(a)
+            obsevation_prime, reward, done, _ = env.step(a)
             state_prime = grid_to_state(obsevation_prime)
             index_prime = state_to_index(state_prime)
 
-            total_return += np.power(gamma, i_step) * r
+            total_return += reward
 
             a_prime = act_with_epsilon_greedy(index_prime, q_table, env)
 
             # Update a Q value table
-            q_table[index, letter_to_act[a]] = q_learning_update(q_table, index, a, r, index_prime)
+            q_table[index, letter_to_act[a]] = q_learning_update(q_table, index, a, reward, index_prime)
 
             # Transition to new state
             state = state_prime
             a = a_prime
 
             if done:
-                window.append(r)
+                window.append(reward)
                 last_100 = window.count(1)
 
                 greedy_success_rate_monitor[i_episode-1,0], greedy_discounted_return_monitor[i_episode-1,0]= evaluate_policy(q_table,env,eval_steps,max_horizon)
                 behaviour_success_rate_monitor[i_episode-1,0], behaviour_discounted_return_monitor[i_episode-1,0] = evaluate_policy(q_table,env,eval_steps,max_horizon)
                 if verbose:
-                    print("Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tFinal_Reward: {3}\tEpsilon: {4:.3f}\tSuccess Rate: {5:.3f}\tLast_100: {6}".format(i_episode, i_step, total_return, r, epsilon,greedy_success_rate_monitor[i_episode-1,0],last_100))
+                    print("Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tFinal_Reward: {3}\tEpsilon: {4:.3f}\tSuccess Rate: {5:.3f}\tLast_100: {6}".format(i_episode, i_step, total_return, reward, epsilon,greedy_success_rate_monitor[i_episode-1,0],last_100))
                     #print "Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tTermR: {3}\ttau: {4:.3f}".format(i_episode, i_step, total_return, r, tau)
 
                 break
