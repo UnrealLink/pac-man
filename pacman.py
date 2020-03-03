@@ -36,12 +36,13 @@ class Env(object):
     reward_range = (-float('inf'), float('inf'))
     spec = None
 
-    def __init__(self, board="board.txt", player_spawn=None, seed=None, gui_display=False):
+    def __init__(self, board="board.txt", player_spawn=None, seed=None, random_respawn=False, gui_display=False):
         """
         Create a pacman env from a txt board
         """
         self.board = board
         self.grid = Grid()
+        self.random_respawn = random_respawn
         if player_spawn:
             self.grid.create(board, player_spawn=player_spawn)
         else:
@@ -91,9 +92,12 @@ class Env(object):
         Returns:
             observation (object): the initial observation.
         """
-        player_spawn = tuple(self.free_tiles[np.random.randint(0, len(self.free_tiles))])
-        self.grid.reset(self.board, player_spawn=player_spawn)
-        self.seed(self.base_seed)
+        if self.random_respawn:
+            player_spawn = tuple(self.free_tiles[np.random.randint(0, len(self.free_tiles))])
+            self.grid.reset(self.board, player_spawn=player_spawn)
+        else:
+            self.grid.reset(self.board)
+        # self.seed(self.base_seed)
         return self.grid
 
     def render(self, mode='human'):

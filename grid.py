@@ -101,7 +101,7 @@ class Grid(object):
                 return 101
             for i, position in enumerate(self.positions[1:]):
                 if self.positions[0] == position:
-                    return -10
+                    return -20
             return 1
         return 0
 

@@ -55,6 +55,12 @@ class Agent(nn.Module):
         valid_moves = observation.get_valid_moves(observation.positions[0])
         probas = self.forward(self.process_input(observation))
         
+        if np.random.random() < self.epsilon:
+            self.decay()
+            index = np.random.randint(0, len(valid_moves))
+            return (valid_moves[index], probas[index])
+        
+        self.decay()
         best_move = None
         max_proba = -np.infty
         for move in valid_moves:
@@ -90,13 +96,12 @@ class Agent(nn.Module):
             if ended: 
                 target_score[j] = reward
             else:
-                next_target_action = target_agent.action(next_obs)
                 target_score[j] = reward + gamma * target_agent.action_with_score(next_obs)[1]
         return target_score
 
 def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
           start_computing_loss = 10, update_target_agent = 10000, save_model=500, name="model"):
-    target_agent = Agent()
+    target_agent = Agent(epsilon=0)
     target_agent.update_weights(agent)
     agent.training = True
     buffer = deque(maxlen = buffer_size)
@@ -111,7 +116,8 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
         while not ended:
             action, score = agent.action_with_score(observation)
             next_obs, reward, ended, _ = env.step(action)
-            buffer.append([observation, action, reward, next_obs, ended, score])
+            if score:
+                buffer.append([observation, action, reward, next_obs, ended, score])
 
             if (n_move % start_computing_loss == 0) and (n_move >= start_computing_loss):
                 shuffled_buffer = np.random.permutation(buffer)
@@ -136,8 +142,8 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
             observation = Grid.copy(next_obs)
             n_move += 1
 
-        if (episode % save_model == 0) and (episode >= save_model):
-            torch.save(agent.state_dict(), f"models/{name}_{episode}.pth")
+        if ((episode+1) % save_model == 0) and ((episode+1) >= save_model):
+            torch.save(agent.state_dict(), f"models/{name}_{episode+1}.pth")
 
         all_scores.append(max_fruits - observation.nb_fruits)
 
@@ -167,8 +173,8 @@ if __name__ == "__main__":
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=20, save_model=1, name="run5")
-    # evaluate_model('models/run5_12.pth', (21,9))
+    train(env, agent, optimizer, loss, n_episode=10000, save_model=2000, name="run8")
+    # evaluate_model('models/run7_3000.pth')
 
 
 
