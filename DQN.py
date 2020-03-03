@@ -1,9 +1,10 @@
 import gym
 import numpy as np
 from collections import deque
-from tqdm import tqdm
+# from tqdm import tqdm
 import copy
 import time
+import pygame
 
 import torch
 import torch.nn as nn
@@ -152,29 +153,31 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
     print(agent.epsilon)
     print(all_scores[:100])
 
-    def evaluate_model(path):
-        env = Env()
-        env.seed(42)
-        agent = Agent()
-        agent.load_state_dict(torch.load(path))
-        ended = False
-        observation = env.grid
-        while not ended:
-            action = agent.action(observation)
-            observation, reward, ended, _ = env.step(action)
-            env.render()
-
-if __name__ == "__main__":
+def evaluate_model(path):
     env = Env(gui_display=True)
     env.seed(42)
-    agent = Agent()
+    agent = Agent(epsilon=0)
+    agent.load_state_dict(torch.load(path))
+    ended = False
+    observation = env.grid
+    while not ended:
+        pygame.time.wait(250)
+        action = agent.action(observation)
+        observation, reward, ended, _ = env.step(action)
+        env.render()
 
-    learning_rate = 0.001
+if __name__ == "__main__":
+    # env = Env()
+    # env.seed(42)
+    # agent = Agent()
 
-    loss = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
+    # learning_rate = 0.001
 
-    train(env, agent, optimizer, loss, n_episode=100000, name="run3")
+    # loss = torch.nn.MSELoss()
+    # optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
+
+    # train(env, agent, optimizer, loss, n_episode=100000, name="run3")
+    evaluate_model('../run3_5000.pth')
 
 
 
