@@ -48,6 +48,7 @@ class Gui(object):
 	RADIUS = 5
 
 	def __init__(self, grid):
+		# pylint: disable=no-member
 		pygame.init()
 		os.environ['SDL_VIDEO_WINDOW_POS'] = "5,5"
 		self.grid = grid
@@ -143,7 +144,7 @@ if __name__ == "__main__":
 
 		events = pygame.event.get()
 		for event in events:
-
+			# pylint: disable=no-member
 			if event.type == pygame.QUIT:
 				sys.exit()
 
@@ -164,9 +165,4 @@ if __name__ == "__main__":
 				print(env.gui.score)
 				break
 		env.render()
-
-
-
-
-
 

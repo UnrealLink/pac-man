@@ -51,10 +51,10 @@ class Env(object):
         self.base_seed = seed
         self.seed(self.base_seed)
         self.ghosts = []
-        ghost1 = Ghost(1, 'random')
+        ghost1 = Ghost(1, 'follow')
         ghost2 = Ghost(2, 'follow')
-        ghost3 = Ghost(3, 'flee')
-        ghost4 = Ghost(4, 'mixed')
+        ghost3 = Ghost(3, 'follow')
+        ghost4 = Ghost(4, 'follow')
         self.ghosts = [ghost1, ghost2, ghost3, ghost4]
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
         self.gui = None

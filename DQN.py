@@ -15,11 +15,13 @@ from pacman import Env
 
 class Agent(nn.Module):
     
-    def __init__(self, training=False, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
+    def __init__(self, input_size, training=False, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
         super(Agent, self).__init__()
-        self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=3)
-        self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=2)
-        self.fc     = nn.Linear(288, 4)
+        self.input_size = input_size
+        size = ((input_size[0] - 5) // 2 + 1) - 2
+        self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=2)
+        self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
+        self.fc     = nn.Linear(size*32, 4)
 
         nn.init.xavier_normal_(self.layer1.weight)
         nn.init.xavier_normal_(self.layer2.weight)
@@ -72,8 +74,8 @@ class Agent(nn.Module):
 
     def process_input(self, observation):
         x = np.stack([
-            ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, 25, 25)) for i in range(8)
-        ], axis=0).reshape((1, 8, 25, 25))
+            ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, self.input_size[0], self.input_size[1])) for i in range(8)
+        ], axis=0).reshape((1, 8, self.input_size[0], self.input_size[1]))
         return torch.Tensor(x)
 
     def forward(self, x):
@@ -83,7 +85,10 @@ class Agent(nn.Module):
         return x
 
     def update_weights(self, model):
-        self.load_state_dict(model.state_dict())
+        if hasattr(model, "state_dict"):
+            self.load_state_dict(model.state_dict())
+        else:
+            self.load_state_dict(model)
 
     def decay(self):
         if self.epsilon > self.epsilon_min:
@@ -101,13 +106,13 @@ class Agent(nn.Module):
 
 def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
           start_computing_loss = 10, update_target_agent = 10000, save_model=500, name="model"):
-    target_agent = Agent(epsilon=0)
+    target_agent = Agent(agent.input_size, epsilon=0)
     target_agent.update_weights(agent)
     agent.training = True
     buffer = deque(maxlen = buffer_size)
     loss_results = []
     n_move = 0
-    max_fruits = 257
+    max_fruits = env.grid.nb_fruits
     all_scores = []
 
     for episode in tqdm(range(n_episode)):
@@ -150,31 +155,31 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
     with open(f"info/{name}_scores.txt", 'w') as file:
         file.writelines(["%s\n" % item  for item in all_scores])
 
-def evaluate_model(path, player_spawn=None):
-    env = Env(gui_display=True, player_spawn=player_spawn)
-    env.seed(42)
-    agent = Agent(epsilon=0)
+def evaluate_model(path, board, player_spawn=None):
+    env = Env(board, gui_display=True, player_spawn=player_spawn)
+    env.seed()
+    agent = Agent(env.grid.grid.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
     observation = env.grid
     while not ended:
-        pygame.time.wait(250)
+        pygame.time.wait(500)
         action = agent.action(observation)
         observation, reward, ended, _ = env.step(action)
         env.render()
 
 if __name__ == "__main__":
-    env = Env()
+    env = Env(random_respawn=False, board="board2.txt")
     env.seed(42)
-    agent = Agent()
+    agent = Agent(env.grid.grid.shape)
 
     learning_rate = 0.0001
 
     loss = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
+    optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=10000, save_model=2000, name="run8")
-    # evaluate_model('models/run7_3000.pth')
+    train(env, agent, optimizer, loss, n_episode=2000, save_model=1000, name="run10")
+    # evaluate_model('models/run10_2000.pth', "board2.txt")
 
 
 

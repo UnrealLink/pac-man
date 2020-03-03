@@ -31,11 +31,15 @@ class Grid(object):
     def __init__(self):
         pass
 
-    def create(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12)):
+    def create(self, board="board.txt", player_spawn=None, ghost_spawn=None):
         with open(board, 'r') as board_file:
+            self.player_spawn = tuple(map(lambda x : int(x), board_file.readline().split()))
+            self.ghost_spawn  = tuple(map(lambda x : int(x), board_file.readline().split()))
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
-        self.player_spawn = player_spawn
-        self.ghost_spawn  = ghost_spawn
+        if player_spawn:
+            self.player_spawn = player_spawn
+        if ghost_spawn: 
+            self.player_spawn = ghost_spawn
         self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts
         self.old_positions = [(0,0)]*5
         for i, position in enumerate(self.positions):
@@ -55,11 +59,15 @@ class Grid(object):
         new_grid.distances = grid.distances
         return new_grid
 
-    def reset(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12)):
+    def reset(self, board="board.txt", player_spawn=None, ghost_spawn=None):
         with open(board, 'r') as board_file:
+            self.player_spawn = tuple(map(lambda x : int(x), board_file.readline().split()))
+            self.ghost_spawn  = tuple(map(lambda x : int(x), board_file.readline().split()))
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
-        self.player_spawn = player_spawn
-        self.ghost_spawn  = ghost_spawn
+        if player_spawn:
+            self.player_spawn = player_spawn
+        if ghost_spawn: 
+            self.player_spawn = ghost_spawn
         self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
