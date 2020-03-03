@@ -144,8 +144,8 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
     with open(f"info/{name}_scores.txt", 'w') as file:
         file.writelines(["%s\n" % item  for item in all_scores])
 
-def evaluate_model(path):
-    env = Env(gui_display=True)
+def evaluate_model(path, player_spawn=None):
+    env = Env(gui_display=True, player_spawn=player_spawn)
     env.seed(42)
     agent = Agent(epsilon=0)
     agent.load_state_dict(torch.load(path))
@@ -167,8 +167,8 @@ if __name__ == "__main__":
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=20, name="run5")
-    # evaluate_model('models/run3_5000.pth')
+    train(env, agent, optimizer, loss, n_episode=20, save_model=1, name="run5")
+    # evaluate_model('models/run5_12.pth', (21,9))
 
 
 
