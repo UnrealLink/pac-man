@@ -94,7 +94,7 @@ class Agent(nn.Module):
         return target_score
 
 def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
-          start_computing_loss = 10, update_target_agent = 100, save_model=500, name="model"):
+          start_computing_loss = 10, update_target_agent = 10000, save_model=500, name="model"):
     target_agent = Agent()
     target_agent.update_weights(agent)
     agent.training = True
@@ -145,14 +145,27 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
 
         if (episode % save_model == 0) and (episode >= save_model):
             torch.save(agent.state_dict(), f"models/{name}_{episode}.pth")
+            print(all_scores[-1])
 
         all_scores.append(max_fruits - observation.nb_fruits)
 
     print(agent.epsilon)
     print(all_scores[:100])
 
+    def evaluate_model(path):
+        env = Env()
+        env.seed(42)
+        agent = Agent()
+        agent.load_state_dict(torch.load(path))
+        ended = False
+        observation = env.grid
+        while not ended:
+            action = agent.action(observation)
+            observation, reward, ended, _ = env.step(action)
+            env.render()
+
 if __name__ == "__main__":
-    env = Env()
+    env = Env(gui_display=True)
     env.seed(42)
     agent = Agent()
 
@@ -161,7 +174,7 @@ if __name__ == "__main__":
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=100, name="run3")
+    train(env, agent, optimizer, loss, n_episode=100000, name="run3")
 
 
 
