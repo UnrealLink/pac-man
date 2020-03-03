@@ -35,7 +35,6 @@ class Env(object):
     metadata = {'render.modes': []}
     reward_range = (-float('inf'), float('inf'))
     spec = None
-    #TODO: set observation range and reward range
 
     def __init__(self, board="board.txt", seed=None, gui_display=False):
         """
@@ -44,6 +43,7 @@ class Env(object):
         self.board = board
         self.grid = Grid()
         self.grid.create(board)
+        self.free_tiles = np.argwhere(64 - (self.grid.grid & 64))
         self.base_seed = seed
         self.seed(self.base_seed)
         self.ghosts = []
@@ -86,7 +86,8 @@ class Env(object):
         Returns:
             observation (object): the initial observation.
         """
-        self.grid.reset(self.board)
+        player_spawn = tuple(self.free_tiles[np.random.randint(0, len(self.free_tiles))])
+        self.grid.reset(self.board, player_spawn=player_spawn)
         self.seed(self.base_seed)
         return self.grid
 

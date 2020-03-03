@@ -1,6 +1,6 @@
 import numpy as np
-import pygame
 from hashlib import sha1
+from copy import copy
 
 from utils import index_sum, InvalidIndex
 
@@ -36,7 +36,8 @@ class Grid(object):
             self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
         self.player_spawn = player_spawn
         self.ghost_spawn  = ghost_spawn
-        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts
+        self.old_positions = [(0,0)]*5
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = 257
@@ -70,6 +71,7 @@ class Grid(object):
         actions is a char list of size 5 containing the action ('U', 'D', 'R', 'L')
         return (reward, ended) tuple.
         """
+        self.old_positions = copy(self.positions)
         for i, action in enumerate(actions):
             self.grid[self.positions[i]] = self.grid[self.positions[i]] - 2**(i+1)
             self.positions[i] = self.check_position(index_sum(self.positions[i], self.action_map[action]))
@@ -97,6 +99,9 @@ class Grid(object):
             self.nb_fruits -= 1
             if self.nb_fruits == 0:
                 return 101
+            for i, position in enumerate(self.positions[1:]):
+                if self.positions[0] == position:
+                    return -10
             return 1
         return 0
 
@@ -108,6 +113,9 @@ class Grid(object):
             return True
         for i, position in enumerate(self.positions[1:]):
             if self.positions[0] == position:
+                return True
+        for i, position in enumerate(self.old_positions[1:]):
+            if self.positions[0] == position and self.old_positions[0] == self.positions[i]:
                 return True
         return False
 
@@ -143,6 +151,7 @@ class Grid(object):
                 flags = np.zeros(self.grid.shape)
                 distances = np.zeros(self.grid.shape)
                 queue = [start]
+                flags[start] = 1
                 while len(queue) > 0:
                     position = queue.pop()
                     moves = self.get_valid_moves(position)
