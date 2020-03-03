@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from collections import deque
-# from tqdm import tqdm
+from tqdm import tqdm
 import copy
 import time
 import pygame
@@ -107,20 +107,13 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
 
     for episode in tqdm(range(n_episode)):
         ended = False
-        # timer = time.time()
         observation = Grid.copy(env.reset())
-        # print(f"Time for reset: {time.time() - timer} ms")
         while not ended:
-            # timer = time.time()
             action, score = agent.action_with_score(observation)
-            # print(f"Time for forward pass: {time.time() - timer} ms")
-            # timer = time.time()
             next_obs, reward, ended, _ = env.step(action)
-            # print(f"Time for env step: {time.time() - timer} ms")
             buffer.append([observation, action, reward, next_obs, ended, score])
 
             if (n_move % start_computing_loss == 0) and (n_move >= start_computing_loss):
-                # timer = time.time()
                 shuffled_buffer = np.random.permutation(buffer)
                 batch = shuffled_buffer[:batch_size]
                 target_score = target_agent.target_prediction(batch, target_agent, gamma)
@@ -136,7 +129,6 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
                         partial_loss.backward(retain_graph=True)
                 optimizer.step()
                 optimizer.zero_grad()
-                # print(f"Time for backprop: {time.time() - timer} ms")
 
             if (n_move % update_target_agent == 0) and (n_move >= update_target_agent):
                 target_agent.update_weights(agent)
@@ -146,12 +138,11 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
 
         if (episode % save_model == 0) and (episode >= save_model):
             torch.save(agent.state_dict(), f"models/{name}_{episode}.pth")
-            print(all_scores[-1])
 
         all_scores.append(max_fruits - observation.nb_fruits)
 
-    print(agent.epsilon)
-    print(all_scores[:100])
+    with open(f"info/{name}_scores.txt", 'w') as file:
+        file.writelines(["%s\n" % item  for item in all_scores])
 
 def evaluate_model(path):
     env = Env(gui_display=True)
@@ -167,17 +158,17 @@ def evaluate_model(path):
         env.render()
 
 if __name__ == "__main__":
-    # env = Env()
-    # env.seed(42)
-    # agent = Agent()
+    env = Env()
+    env.seed(42)
+    agent = Agent()
 
-    # learning_rate = 0.001
+    learning_rate = 0.0001
 
-    # loss = torch.nn.MSELoss()
-    # optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
+    loss = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
 
-    # train(env, agent, optimizer, loss, n_episode=100000, name="run3")
-    evaluate_model('../run3_5000.pth')
+    train(env, agent, optimizer, loss, n_episode=20, name="run5")
+    # evaluate_model('models/run3_5000.pth')
 
 
 
