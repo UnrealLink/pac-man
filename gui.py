@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import sys
 import pygame
 
 
@@ -48,11 +49,16 @@ class Gui(object):
 
 	def __init__(self, grid):
 		pygame.init()
-		os.environ['SDL_VIDEO_WINDOW_POS'] = "0,0"
+		os.environ['SDL_VIDEO_WINDOW_POS'] = "5,5"
 		self.grid = grid
 		self.row_number, self.column_number = self.grid.shape
 		print (self.grid.shape)
 		self.screen = pygame.display.set_mode((self.column_number*self.SQUARESIZE, (self.row_number+1)*self.SQUARESIZE))
+
+
+		self.font = font = pygame.font.Font(None, 24)
+
+		self.score = 0
 
 	def render(self):
 		"""
@@ -72,6 +78,12 @@ class Gui(object):
 						if int(value[6-index]):
 							self.draw_monster(r,c,self.color_by_id[2**index])
 							continue
+
+		self.text = self.font.render("Score : " + str(self.score) , True, (255, 0, 0), (0,0,0))
+		textRect = self.text.get_rect()  
+		textRect.center = (50, 20) 
+		self.screen.blit(self.text, textRect)
+
 		pygame.display.update()
 		return
 
@@ -121,8 +133,40 @@ if __name__ == "__main__":
 	ghost4 = Ghost(4, 'mixed')
 	ghosts = [ghost1, ghost2, ghost3, ghost4]
 
-	for i in range(100):
+
+	action = 'L'
+
+	while True :
 		pygame.time.wait(250)
-		action = 'L' if i%2 else 'R'
-		env.step(action)
+		
+		legal = env.grid.get_valid_moves(env.grid.positions[0])
+
+		events = pygame.event.get()
+		for event in events:
+
+			if event.type == pygame.QUIT:
+				sys.exit()
+
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_LEFT and "L" in legal:
+					action = "L"
+				elif event.key == pygame.K_RIGHT and "R" in legal:
+					action = "R"
+				elif event.key == pygame.K_UP and "U" in legal:
+					action = "U"
+				elif event.key == pygame.K_DOWN and "D" in legal:
+					action = "D"
+
+		if action in legal :
+			obs, reward, ended, info = env.step(action)
+			env.gui.score += reward
+			if ended :
+				print(env.gui.score)
+				break
 		env.render()
+
+
+
+
+
+
