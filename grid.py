@@ -40,7 +40,7 @@ class Grid(object):
         self.old_positions = [(0,0)]*5
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
-        self.nb_fruits = 257
+        self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)
         self.distances = {}
         self.compute_distances()
 
@@ -63,7 +63,7 @@ class Grid(object):
         self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
-        self.nb_fruits = 257
+        self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)
 
     def update(self, actions):
         """ 
@@ -115,7 +115,7 @@ class Grid(object):
             if self.positions[0] == position:
                 return True
         for i, position in enumerate(self.old_positions[1:]):
-            if self.positions[0] == position and self.old_positions[0] == self.positions[i]:
+            if self.positions[0] == position and self.old_positions[0] == self.positions[i+1]:
                 return True
         return False
 
