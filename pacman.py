@@ -86,7 +86,7 @@ class Env(object):
         Returns:
             observation (object): the initial observation.
         """
-        self.grid.create(self.board)
+        self.grid.reset(self.board)
         self.seed(self.base_seed)
         return self.grid
 

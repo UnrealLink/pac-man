@@ -3,6 +3,7 @@ import numpy as np
 from collections import deque
 from tqdm import tqdm
 import copy
+import time
 
 import torch
 import torch.nn as nn
@@ -13,7 +14,7 @@ from pacman import Env
 
 class Agent(nn.Module):
     
-    def __init__(self, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
+    def __init__(self, training=False, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
         super(Agent, self).__init__()
         self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=3)
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=2)
@@ -26,6 +27,8 @@ class Agent(nn.Module):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
+
+        self.training = training
 
     def action(self, observation):
         actions = list(observation.action_map.keys())
@@ -90,26 +93,33 @@ class Agent(nn.Module):
                 target_score[j] = reward + gamma * target_agent.action_with_score(next_obs)[1]
         return target_score
 
-def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32,
-          start_computing_loss = 10, update_target_agent = 100, 
-          gamma=0.95, n_episode = 1000):
+def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
+          start_computing_loss = 10, update_target_agent = 100, save_model=500, name="model"):
     target_agent = Agent()
     target_agent.update_weights(agent)
+    agent.training = True
     buffer = deque(maxlen = buffer_size)
     loss_results = []
     n_move = 0
     max_fruits = 257
     all_scores = []
 
-    for i in tqdm(range(n_episode)):
+    for episode in tqdm(range(n_episode)):
         ended = False
+        # timer = time.time()
         observation = Grid.copy(env.reset())
+        # print(f"Time for reset: {time.time() - timer} ms")
         while not ended:
+            # timer = time.time()
             action, score = agent.action_with_score(observation)
+            # print(f"Time for forward pass: {time.time() - timer} ms")
+            # timer = time.time()
             next_obs, reward, ended, _ = env.step(action)
+            # print(f"Time for env step: {time.time() - timer} ms")
             buffer.append([observation, action, reward, next_obs, ended, score])
 
-            if (n_move % start_computing_loss == 0) and (n_move > start_computing_loss):
+            if (n_move % start_computing_loss == 0) and (n_move >= start_computing_loss):
+                # timer = time.time()
                 shuffled_buffer = np.random.permutation(buffer)
                 batch = shuffled_buffer[:batch_size]
                 target_score = target_agent.target_prediction(batch, target_agent, gamma)
@@ -125,30 +135,33 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32,
                         partial_loss.backward(retain_graph=True)
                 optimizer.step()
                 optimizer.zero_grad()
+                # print(f"Time for backprop: {time.time() - timer} ms")
 
-            if n_move == update_target_agent:
+            if (n_move % update_target_agent == 0) and (n_move >= update_target_agent):
                 target_agent.update_weights(agent)
 
             observation = Grid.copy(next_obs)
             n_move += 1
-            
+
+        if (episode % save_model == 0) and (episode >= save_model):
+            torch.save(agent.state_dict(), f"models/{name}_{episode}.pth")
+
         all_scores.append(max_fruits - observation.nb_fruits)
-    print(all_scores)
+
+    print(agent.epsilon)
+    print(all_scores[:100])
 
 if __name__ == "__main__":
     env = Env()
+    env.seed(42)
     agent = Agent()
-
-    initial_weights = copy.deepcopy(agent.state_dict())
 
     learning_rate = 0.001
 
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(),lr=learning_rate)
 
-    train(env, agent, optimizer, loss)
-
-    print(np.sum((agent.state_dict()['layer1.weight']-initial_weights['layer1.weight']).numpy()))
+    train(env, agent, optimizer, loss, n_episode=100, name="run3")
 
 
 

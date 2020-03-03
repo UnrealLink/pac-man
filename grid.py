@@ -54,6 +54,16 @@ class Grid(object):
         new_grid.distances = grid.distances
         return new_grid
 
+    def reset(self, board="board.txt", player_spawn=(15, 12), ghost_spawn=(9, 12)):
+        with open(board, 'r') as board_file:
+            self.grid = np.array([line.split() for line in board_file.readlines()], dtype=np.int8)
+        self.player_spawn = player_spawn
+        self.ghost_spawn  = ghost_spawn
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        for i, position in enumerate(self.positions):
+            self.grid[position] = self.grid[position] + 2**(i+1)
+        self.nb_fruits = 257
+
     def update(self, actions):
         """ 
         Update the grid according to agent and ghosts' actions.
