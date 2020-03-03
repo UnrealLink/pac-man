@@ -1,5 +1,7 @@
 import numpy as np
+import os
 import pygame
+
 
 class Gui(object):
 	"""
@@ -46,6 +48,7 @@ class Gui(object):
 
 	def __init__(self, grid):
 		pygame.init()
+		os.environ['SDL_VIDEO_WINDOW_POS'] = "0,0"
 		self.grid = grid
 		self.row_number, self.column_number = self.grid.shape
 		print (self.grid.shape)
