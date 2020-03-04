@@ -50,15 +50,16 @@ class Gui(object):
 	def __init__(self, grid):
 		# pylint: disable=no-member
 		pygame.init()
-		os.environ['SDL_VIDEO_WINDOW_POS'] = "5,5"
-		self.grid = grid
+		os.environ['SDL_VIDEO_WINDOW_POS'] = "5,25"
+		self.grid = grid.grid
 		self.row_number, self.column_number = self.grid.shape
-		print (self.grid.shape)
+		# print (self.grid.shape)
 		self.screen = pygame.display.set_mode((self.column_number*self.SQUARESIZE, (self.row_number+1)*self.SQUARESIZE))
 
 
 		self.font = font = pygame.font.Font(None, 24)
 
+		self.max_score = grid.nb_fruits
 		self.score = 0
 
 	def render(self):
@@ -79,7 +80,8 @@ class Gui(object):
 						if int(value[6-index]):
 							self.draw_monster(r,c,self.color_by_id[2**index])
 							continue
-
+							
+		self.score = self.max_score - np.sum(self.grid & 1)
 		self.text = self.font.render("Score : " + str(self.score) , True, (255, 0, 0), (0,0,0))
 		textRect = self.text.get_rect()  
 		textRect.center = (50, 20) 
