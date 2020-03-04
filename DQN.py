@@ -32,7 +32,7 @@ class Agent(nn.Module):
         # Define net layers
         self.layer1 = nn.Conv2d( 1, 16, (5, 5), stride=2)
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
-        self.fc     = nn.Linear(size*32, 4)
+        self.fc     = nn.Linear(size*size*32, 4)
 
         # Init layers
         # nn.init.xavier_uniform_(self.layer1.weight)
@@ -127,7 +127,7 @@ class Agent(nn.Module):
         expected_state_action_scores = torch.tensor(reward_batch, device=device) + (next_state_scores * GAMMA)
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_scores, expected_state_action_scores.unsqueeze(1))
+        loss = F.mse_loss(state_action_scores, expected_state_action_scores.unsqueeze(1))
 
         # Optimize the model
         optimizer.zero_grad()
@@ -148,7 +148,7 @@ class Agent(nn.Module):
         memory = deque(maxlen=BUFFER_SIZE)
 
         # Optimizer
-        optimizer = torch.optim.RMSprop(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters())
 
         # Create target net to compute loss
         target_agent = Agent(self.input_size)
@@ -209,10 +209,12 @@ class Agent(nn.Module):
 
         # Plot scores
         plt.plot([10*(i+1) for i in range(len(scores))], scores)
+        plt.xlabel("Number of episodes")
+        plt.ylabel("Score")
         plt.show()
 
 def evaluate_model(path, env):
-    env.seed(42)
+    env.seed(34)
     agent = Agent(env.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
@@ -226,12 +228,13 @@ def evaluate_model(path, env):
 
 if __name__ == "__main__":
     # env = Env("board2.txt", nb_ghost=1, random_respawn=False)
-    # env.seed(42)
+    # env.seed(34)
     # agent = Agent(env.shape, epsilon_decay=0.0001)
-    # agent.train_agent(env, num_episodes=1000, save_model=500, name="model")
+    # agent.train_agent(env, num_episodes=1300, save_model=1300, name="model3")
 
-    env = Env("board2.txt", nb_ghost=1, gui_display=True)
-    evaluate_model("models/model_1000.pth", env)
+    env = Env("board.txt", nb_ghost=1, gui_display=True)
+    env.seed(34)
+    evaluate_model("models/model2_1000.pth", env)
 
 
 
