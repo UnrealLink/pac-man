@@ -227,14 +227,14 @@ def evaluate_model(path, env):
     return max_score - observation.nb_fruits
 
 if __name__ == "__main__":
-    # env = Env("board2.txt", nb_ghost=1, random_respawn=False)
-    # env.seed(34)
-    # agent = Agent(env.shape, epsilon_decay=0.0001)
-    # agent.train_agent(env, num_episodes=1300, save_model=1300, name="model3")
-
-    env = Env("board.txt", nb_ghost=1, gui_display=True)
+    env = Env("board2.txt", nb_ghost=1, random_respawn=False)
     env.seed(34)
-    evaluate_model("models/model2_1000.pth", env)
+    agent = Agent(env.shape, epsilon_decay=0.0001)
+    agent.train_agent(env, num_episodes=1300, save_model=1300, name="model3")
+
+    # env = Env("board.txt", nb_ghost=1, gui_display=True)
+    # env.seed(34)
+    # evaluate_model("models/model2_1000.pth", env)
 
 
 

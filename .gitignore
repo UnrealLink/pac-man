@@ -1,6 +1,7 @@
 
 *.pyc
 __pycache__/
-models/
+models/*.pth
 .vscode/
-info/
+info/*.txt
+models/old_models
