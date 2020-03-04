@@ -13,155 +13,178 @@ import torch.nn.functional as F
 from grid import Grid
 from pacman import Env
 
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
+
 class Agent(nn.Module):
     
-    def __init__(self, input_size, training=False, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
+    def __init__(self, input_size, epsilon=1, epsilon_decay=0.000001, epsilon_min=0.1):
         super(Agent, self).__init__()
         self.input_size = input_size
+        
+        # Compute size of last conv layer
         size = ((input_size[0] - 5) // 2 + 1) - 2
-        self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
-        self.fc1     = nn.Linear(size*32, 256)
-        self.fc2     = nn.Linear(256, 4)
 
+        # Define net layers
+        self.layer1 = nn.Conv2d( 1, 16, (5, 5), stride=2)
+        self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
+        self.fc     = nn.Linear(size*32, 4)
+
+        # Init layers
         nn.init.xavier_uniform_(self.layer1.weight)
         nn.init.xavier_uniform_(self.layer2.weight)
-        nn.init.xavier_uniform_(self.fc1.weight)
-        nn.init.xavier_uniform_(self.fc2.weight)
+        nn.init.xavier_uniform_(self.fc.weight)
 
+        # Parameters for epsilon greedy policy
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
 
-        self.training = training
-
-    def process_input(self, observation):
-        x = np.stack([
-            ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, self.input_size[0], self.input_size[1])) for i in range(8)
-        ], axis=0).reshape((1, 8, self.input_size[0], self.input_size[1]))
-        return torch.Tensor(x)
-
     def forward(self, x):
-        x = F.relu(self.bn1(self.layer1(x)))
+        x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        x = self.fc1(x.view(-1))
-        x = self.fc2(x)
+        x = self.fc(x.view(x.shape[0], -1))
         return x
 
+    def process_input(self, observations):
+        """
+        Transform a batch of grids into a batch of tensors
+        Input should be an iterable of grids
+        """
+        shape = (1, self.input_size[0], self.input_size[1])
+        x = np.array([observation.grid.reshape(shape) for observation in observations], dtype=np.uint8)
+        # pylint: disable=not-callable
+        return torch.tensor(x, dtype=torch.float32, device=device)
+
     def action(self, observation):
+        """
+        Select an action according to observation
+        """
+
         actions = list(observation.action_map.keys())
         valid_moves = observation.get_valid_moves(observation.positions[0])
+        
+        # Reduces epsilon
+        self.decay()
+
+        # Select a random move with a probability of epsilon
         if np.random.random() < self.epsilon:
-            self.decay()
             return valid_moves[np.random.randint(0, len(valid_moves))]
         
-        self.decay()
-        probas = self.forward(self.process_input(observation))
-        print(probas.detach().numpy())
-        best_move = None
-        max_proba = - np.infty
-        for move in valid_moves:
-            proba = probas[actions.index(move)]
-            if proba > max_proba:
-                max_proba = proba
-                best_move = move
-        return best_move
-
-    def action_with_score(self, observation):
-        actions = list(observation.action_map.keys())
-        valid_moves = observation.get_valid_moves(observation.positions[0])
-        probas = self.forward(self.process_input(observation))
-        
-        if np.random.random() < self.epsilon:
-            self.decay()
-            index = np.random.randint(0, len(valid_moves))
-            return (valid_moves[index], probas[index])
-        
-        self.decay()
-        best_move = None
-        max_proba = -np.infty
-        for move in valid_moves:
-            proba = probas[actions.index(move)]
-            if proba > max_proba:
-                max_proba = proba
-                best_move = move
-        return best_move, max_proba
-
-    def update_weights(self, model):
-        if hasattr(model, "state_dict"):
-            self.load_state_dict(model.state_dict())
-        else:
-            self.load_state_dict(model)
+        # Otherwise uses the net output
+        with torch.no_grad():
+            scores = self.forward(self.process_input([observation])).numpy()[0]
+        for i, action in enumerate(actions):
+            if not (action in valid_moves):
+                scores[i] = - np.infty
+        return actions[np.argmax(scores)]
 
     def decay(self):
+        """
+        Reduces epsilon
+        """
         if self.epsilon > self.epsilon_min:
             self.epsilon = self.epsilon - self.epsilon_decay
     
-    def target_prediction(self, batch, target_agent, gamma):
-        target_score = np.zeros(len(batch))
-        for j in range(len(batch)):
-            obs, action, reward, next_obs, ended, score = batch[j]
-            if ended: 
-                target_score[j] = reward
-            else:
-                target_score[j] = reward + gamma * target_agent.action_with_score(next_obs)[1]
-        return target_score
+    def optimize(self, batch, target_agent, optimizer, env):
+        """
+        Optimize the agent on a batch according to target_agent's predictions
+        """
+        GAMMA = 0.95
 
-def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
-          start_computing_loss = 32, update_target_agent = 10000, save_model=500, name="model"):
-    target_agent = Agent(agent.input_size, epsilon=0)
-    target_agent.update_weights(agent)
-    agent.training = True
-    buffer = deque(maxlen = buffer_size)
-    loss_results = []
-    n_move = 0
-    max_fruits = env.grid.nb_fruits
-    all_scores = []
+        state_batch      = batch[:, 0]
+        action_batch     = batch[:, 1]
+        reward_batch     = batch[:, 2]
+        next_state_batch = batch[:, 3]
 
-    for episode in tqdm(range(n_episode)):
-        ended = False
-        observation = Grid.copy(env.reset())
-        env.render()
-        while not ended:
-            action, score = agent.action_with_score(observation)
-            next_obs, reward, ended, _ = env.step(action)
-            # print(env.grid.grid)
-            # print(reward)
-            # pygame.time.wait(1000)
-            if score:
-                buffer.append([observation, action, reward, next_obs, ended, score])
+        # Compute the score of each (state, action) according to our net
+        actions = env.actions
+        # pylint: disable=not-callable
+        indices = torch.tensor([actions.index(action) for action in action_batch], dtype=torch.int64, device=device).reshape((len(batch), 1))
+        state_action_scores = self.forward(self.process_input(state_batch)).gather(1, indices)
 
-            if (n_move % start_computing_loss == 0) and (n_move >= start_computing_loss):
-                shuffled_buffer = np.random.permutation(buffer)
-                batch = shuffled_buffer[:batch_size]
-                target_score = target_agent.target_prediction(batch, target_agent, gamma)
+        # Compute the best score of target_agent for the next step of non final moves
+        next_state_scores = torch.zeros(len(batch), device=device)
+        non_final_next_states_indices = np.argwhere(next_state_batch != None).reshape(-1)
+        non_final_next_states = next_state_batch[non_final_next_states_indices]
+        next_state_scores[non_final_next_states_indices] = target_agent(self.process_input(non_final_next_states)).max(1)[0].detach() # we don't need the gradient
 
-                batch_score = [x[-1] for x in batch]
-                target_score = torch.Tensor(target_score)
-                for i, scores in enumerate(zip(batch_score, target_score)):
-                    s, target_s = scores
-                    partial_loss = loss(s, target_s)
-                    if i == len(batch_score):
-                        partial_loss.backward()
-                    else:
-                        partial_loss.backward(retain_graph=True)
-                optimizer.step()
-                optimizer.zero_grad()
+        # Compute expected Q values
+        reward_batch = reward_batch.astype(np.float32)
+        expected_state_action_scores = torch.tensor(reward_batch, device=device) + (next_state_scores * GAMMA)
 
-            if (n_move % update_target_agent == 0) and (n_move >= update_target_agent):
-                target_agent.update_weights(agent)
+        # Compute Huber loss
+        loss = F.smooth_l1_loss(state_action_scores, expected_state_action_scores.unsqueeze(1))
 
-            observation = Grid.copy(next_obs)
-            n_move += 1
+        # Optimize the model
+        optimizer.zero_grad()
+        loss.backward()
+        # Clipping gradient
+        for param in self.parameters():
+            param.grad.data.clamp_(-1, 1)
+        optimizer.step()
 
-        if ((episode+1) % save_model == 0) and ((episode+1) >= save_model):
-            torch.save(agent.state_dict(), f"models/{name}_{episode+1}.pth")
+    def train_agent(self, env, num_episodes=1000, save_model=500, name="model"):
+        """
+        Train the model on env
+        """
 
-        all_scores.append(max_fruits - observation.nb_fruits)
+        # Create memory
+        BUFFER_SIZE = 100
+        BATCH_SIZE  = 32
+        memory = deque(maxlen=BUFFER_SIZE)
 
-    with open(f"info/{name}_scores.txt", 'w') as file:
-        file.writelines(["%s\n" % item  for item in all_scores])
+        # Optimizer
+        optimizer = torch.optim.RMSprop(self.parameters())
+
+        # Create target net to compute loss
+        target_agent = Agent(self.input_size)
+        target_agent.load_state_dict(self.state_dict())
+        target_agent.eval()
+        UPDATE_TARGET_AGENT = 100
+
+        scores = []
+
+        for episode in tqdm(range(1, num_episodes+1)):
+            # Initialize the environment and state
+            current_state = Grid.copy(env.reset())
+            done = False
+            score = 0
+
+            # Run the game
+            while not done:
+                # Select and perform an action
+                action = self.action(current_state)
+                observation, reward, done, _ = env.step(action)                
+                next_state = None if done else Grid.copy(observation)
+                score += reward
+
+                # Add transition to memory
+                memory.append([current_state, action, reward, next_state])
+
+                # Update state
+                current_state = Grid.copy(observation)
+
+                # If memory is filled enough, optimize model with a transition batch
+                if len(memory) >= BATCH_SIZE:
+                    shuffled_memory = np.random.permutation(memory)
+                    batch = shuffled_memory[:BATCH_SIZE]
+                    self.optimize(batch, target_agent, optimizer, env)
+
+            # Update target net weights
+            if episode % UPDATE_TARGET_AGENT == 0:
+                target_agent.load_state_dict(self.state_dict())
+            
+            # Saves weights to file
+            if episode % save_model == 0:
+                torch.save(self.state_dict(), f"models/{name}_{episode}.pth")
+            
+            scores.append(score)
+
+        # Saves score to file
+        with open(f"info/{name}_scores.txt", 'w') as file:
+            file.writelines(["%s\n" % item  for item in scores])
+
 
 def evaluate_model(path, board):
     env = Env(board, gui_display=True, nb_ghost=1)
@@ -177,17 +200,15 @@ def evaluate_model(path, board):
         env.render()
 
 if __name__ == "__main__":
-    env = Env(random_respawn=True, board="board2.txt", nb_ghost=1)
-    env.seed(42)
-    agent = Agent(env.grid.grid.shape, epsilon_decay=0.001)
+    # env = Env("board2.txt", nb_ghost=1)
+    # env.seed(34)
+    # agent = Agent(env.shape)
+    # agent.train_agent(env, num_episodes=10000, save_model=5000)
 
-    learning_rate = 0.00001
-
-    loss = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
-
-    train(env, agent, optimizer, loss, n_episode=3000, save_model=1000, name="run22")
-    # evaluate_model('models/run22_3000.pth', "board2.txt")
+    evaluate_model("models/model_10000.pth", "board2.txt")
 
 
 
+
+
+    
