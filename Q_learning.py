@@ -11,8 +11,6 @@ from grid import Grid
 
 # Meta parameters for the RL agent
 alpha = 0.1
-tau = init_tau = 1
-tau_inc = 0.01
 gamma = 0.99
 epsilon = 0.5
 epsilon_decay = 0.999
@@ -20,7 +18,7 @@ verbose = True
 
 def decrese_epsilon(i, epsilon):
     global epsilon_decay
-    if i >= 2000:
+    if i >= 0:
         return epsilon*epsilon_decay
     else:
         return epsilon
@@ -38,12 +36,6 @@ letter_to_act = {
         'D' : 2,
         'R' : 3
 }
-
-def coord_to_state (coords):
-    return coords[0] * 25 + coords[1]
-
-def state_to_coords (state):
-    return (state//25, state%25)
 
 def get_closest_fruits(pacman_location, safe_moves, grid):
     distances = [-1]*4
@@ -99,8 +91,8 @@ def grid_to_state(grid):
     if non_dangerous_path_counter == 0 or non_dangerous_path_counter == 1:
         # print('check1')
         # print(act_to_letter[min_distance_to_ghost_tab.argmax()])
-        state[4] = min_distance_to_ghost_tab.argmax() // 2
-        state[5] = min_distance_to_ghost_tab.argmax() % 2
+        state[4] = min_distance_to_ghost_tab.argmax() & 2
+        state[5] = min_distance_to_ghost_tab.argmax() & 1
     else:
         safe_moves = []
         for move in pacman_possible_moves:
@@ -114,8 +106,8 @@ def grid_to_state(grid):
                 distances_to_fruits[i] = np.infty
         # print(distances_to_fruits)
         # print(act_to_letter[np.array(distances_to_fruits).argmin()])
-        state[4] = np.array(distances_to_fruits).argmin() // 2
-        state[5] = np.array(distances_to_fruits).argmin() % 2
+        state[4] = np.array(distances_to_fruits).argmin() & 2
+        state[5] = np.array(distances_to_fruits).argmin() & 1
 
     # s6
     # print('S6...')
@@ -144,8 +136,8 @@ def grid_to_state(grid):
 def state_to_index(state):
     index = 0
     for i, x in enumerate(state):
-        index +=  x*2**i
-    return int(index)
+        index +=  int(x)*2**i
+    return index
 
 # Act with epsilon greedy
 def act_with_epsilon_greedy(index, q_table, env, epsilon):
@@ -157,17 +149,30 @@ def act_with_epsilon_greedy(index, q_table, env, epsilon):
         mask = np.ones(4, dtype=bool)
         mask[np.array(list(map(lambda x : letter_to_act[x], possible_moves)))] = False
         q_values[mask] = - np.infty
-        action = act_to_letter[q_values.argmax()]
+        # print(q_values)
+        # print(np.where(q_values == q_values.max())[0])
+        best_moves = np.where(q_values == q_values.max())[0]
+        p = 1/len(best_moves)
+        proba = np.array([p] * len(best_moves))
+        best_move = np.random.choice(best_moves, p=proba)
+        # print(best_move)
+        action = act_to_letter[best_move]
+        # print(action)
     return action
 
 # Compute Q-Learning update
 def q_learning_update(q_table, index, a, r, index_prime):
+    global alpha
+    global gamma
     td = r + gamma * np.max(q_table[index_prime, :]) - q_table[index, letter_to_act[a]]
     return q_table[index, letter_to_act[a]] + alpha * td
 
 # Evaluate a policy on n runs
 def evaluate_policy(q_table, env, n, h):
-    success_rate = 0.0 
+
+    global gamma
+
+    score_rate = 0.0 
     mean_return = 0.0
 
     for _ in range(n):
@@ -176,26 +181,27 @@ def evaluate_policy(q_table, env, n, h):
         state = grid_to_state(observation)
         index = state_to_index(state)
 
+        cumulated_reward = 0
         for step in range(h):
-            new_observation, r, done, _ = env.step(act_with_epsilon_greedy(index, q_table, env, epsilon))
+            new_observation, r, done, _ = env.step(act_with_epsilon_greedy(index, q_table, env, 0))
+            cumulated_reward += r
             discounted_return += np.power(gamma, step) * r
 
             if done:
-                success_rate += float(r)/n
+                score_rate += float(cumulated_reward)/n
                 mean_return += float(discounted_return)/n
                 break
 
-    return success_rate, mean_return
+    return score_rate, mean_return
 
 def evaluate_model(board, path):
     env = Env(board=board, random_respawn=False, gui_display=True)
     ended = False
     with open(path, 'rb') as q_table_file:
         q_table = pickle.load(q_table_file)
-    print(q_table.max())
     observation = env.grid
+    print(q_table)
     while not ended:
-        pygame.time.wait(250)
         state = grid_to_state(observation)
         # print(state)
         index = state_to_index(state)
@@ -204,7 +210,9 @@ def evaluate_model(board, path):
         # print(action)
         # print(act_to_letter[state[4]*2+state[5]])
         observation, reward, ended, _ = env.step(action)
+        env.gui.score += reward
         env.render()
+        pygame.time.wait(250)
 
 def train(board):
     
@@ -227,10 +235,10 @@ def train(board):
 
     # Init Q-table
     q_table = np.zeros((2048,4), dtype=np.float)
-    for index in range(2048):
-        state = np.binary_repr(index, width=11)
-        prefered_action = 2*int(state[4])+int(state[5])
-        q_table[index, prefered_action] = 10
+    # for index in range(2048):
+    #     state = np.binary_repr(index, width=11)
+    #     prefered_action = 2*int(state[4])+int(state[5])
+    #     q_table[index, prefered_action] = 0.5
 
     env.reset()
 
@@ -274,7 +282,7 @@ def train(board):
             a = a_prime
 
             if done:
-                window.append(reward)
+                window.append(total_return)
                 last_100 = window.count(1)
 
                 greedy_success_rate_monitor[i_episode-1,0], greedy_discounted_return_monitor[i_episode-1,0]= evaluate_policy(q_table,env,eval_steps,max_horizon)
@@ -282,9 +290,10 @@ def train(board):
                     print("Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tFinal_Reward: {3}\tEpsilon: {4:.3f}\tSuccess Rate: {5:.3f}\tLast_100: {6}".format(i_episode, i_step, total_return, reward, epsilon,greedy_success_rate_monitor[i_episode-1,0],last_100))
                 break
 
-        if i_episode % 500 == 0:
+        if i_episode % 1000 == 0:
             with open(f'../q_tables/q_table_{i_episode}.pickle', 'wb') as q_table_file:
                 pickle.dump(q_table, q_table_file)
+            np.savetxt(f'../q_tables/q_table_{i_episode}.csv', q_table, delimiter=',')
         # Schedule for epsilon
         epsilon = decrese_epsilon(i_episode, epsilon)
 
@@ -294,13 +303,17 @@ def train(board):
     plt.title("Greedy policy with {0} and {1}".format("rl_algorithm", "greedy"))
     plt.xlabel("Steps")
     plt.ylabel("Success Rate")
+    plt.show()
 
-def main(eval=False):
+def main(board, eval=False):
     if eval: 
-        for i in range (21):
-            evaluate_model('board.txt', f'../q_tables/q_table_{i*500}.pickle')
+        for i in range (10, 11):
+            print(500*i)
+            for tests in range(10):
+                evaluate_model(board, f'../q_tables/q_table_{10000}.pickle')
     else: 
-        train('board.txt')
+        train(board)
 
 if __name__ == "__main__":
-    main(eval=True)
+
+    main('board.txt', eval=True)
