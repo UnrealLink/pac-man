@@ -31,14 +31,17 @@ class Agent(nn.Module):
         self.fc     = nn.Linear(size*32, 4)
 
         # Init layers
-        nn.init.xavier_uniform_(self.layer1.weight)
-        nn.init.xavier_uniform_(self.layer2.weight)
-        nn.init.xavier_uniform_(self.fc.weight)
+        # nn.init.xavier_uniform_(self.layer1.weight)
+        # nn.init.xavier_uniform_(self.layer2.weight)
+        # nn.init.xavier_uniform_(self.fc.weight)
 
         # Parameters for epsilon greedy policy
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
+
+        # Memory of last observation
+        self.last_observation = None
 
     def forward(self, x):
         x = F.relu(self.layer1(x))
@@ -46,13 +49,13 @@ class Agent(nn.Module):
         x = self.fc(x.view(x.shape[0], -1))
         return x
 
-    def process_input(self, observations):
+    def process_input(self, states):
         """
         Transform a batch of grids into a batch of tensors
         Input should be an iterable of grids
         """
         shape = (1, self.input_size[0], self.input_size[1])
-        x = np.array([observation.grid.reshape(shape) for observation in observations], dtype=np.uint8)
+        x = np.array([state.reshape(shape) for state in states], dtype=np.int32)
         # pylint: disable=not-callable
         return torch.tensor(x, dtype=torch.float32, device=device)
 
@@ -64,19 +67,25 @@ class Agent(nn.Module):
         actions = list(observation.action_map.keys())
         valid_moves = observation.get_valid_moves(observation.positions[0])
         
+        # Check last observation
+        if self.last_observation == None:
+            self.last_observation = Grid.copy(observation)
+
         # Reduces epsilon
         self.decay()
 
         # Select a random move with a probability of epsilon
         if np.random.random() < self.epsilon:
+            self.last_observation = Grid.copy(observation)
             return valid_moves[np.random.randint(0, len(valid_moves))]
         
         # Otherwise uses the net output
         with torch.no_grad():
-            scores = self.forward(self.process_input([observation])).numpy()[0]
+            scores = self.forward(self.process_input([observation.grid - self.last_observation.grid])).numpy()[0]
         for i, action in enumerate(actions):
             if not (action in valid_moves):
                 scores[i] = - np.infty
+        self.last_observation = Grid.copy(observation)
         return actions[np.argmax(scores)]
 
     def decay(self):
@@ -105,7 +114,7 @@ class Agent(nn.Module):
 
         # Compute the best score of target_agent for the next step of non final moves
         next_state_scores = torch.zeros(len(batch), device=device)
-        non_final_next_states_indices = np.argwhere(next_state_batch != None).reshape(-1)
+        non_final_next_states_indices = np.nonzero(np.array([0 if (next_state is None) else 1 for next_state in next_state_batch]))
         non_final_next_states = next_state_batch[non_final_next_states_indices]
         next_state_scores[non_final_next_states_indices] = target_agent(self.process_input(non_final_next_states)).max(1)[0].detach() # we don't need the gradient
 
@@ -147,23 +156,29 @@ class Agent(nn.Module):
 
         for episode in tqdm(range(1, num_episodes+1)):
             # Initialize the environment and state
-            current_state = Grid.copy(env.reset())
+            current_observation = Grid.copy(env.reset())
+            last_observation = Grid.copy(current_observation)
+            current_state = current_observation.grid - last_observation.grid
             done = False
             score = 0
 
             # Run the game
             while not done:
                 # Select and perform an action
-                action = self.action(current_state)
-                observation, reward, done, _ = env.step(action)                
-                next_state = None if done else Grid.copy(observation)
+                action = self.action(current_observation)
+                observation, reward, done, _ = env.step(action)
+
+                # Compute next state
+                last_observation = Grid.copy(current_observation)
+                current_observation = Grid.copy(observation)
+                next_state = None if done else current_observation.grid - last_observation.grid
                 score += reward
 
                 # Add transition to memory
                 memory.append([current_state, action, reward, next_state])
 
                 # Update state
-                current_state = Grid.copy(observation)
+                current_state = np.copy(next_state)
 
                 # If memory is filled enough, optimize model with a transition batch
                 if len(memory) >= BATCH_SIZE:
@@ -189,7 +204,7 @@ class Agent(nn.Module):
 def evaluate_model(path, board):
     env = Env(board, gui_display=True, nb_ghost=1)
     env.seed(42)
-    agent = Agent(env.grid.grid.shape, epsilon=0)
+    agent = Agent(env.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
     observation = env.grid
@@ -200,12 +215,12 @@ def evaluate_model(path, board):
         env.render()
 
 if __name__ == "__main__":
-    # env = Env("board2.txt", nb_ghost=1)
+    # env = Env("board2.txt", nb_ghost=1, random_respawn=False)
     # env.seed(34)
-    # agent = Agent(env.shape)
-    # agent.train_agent(env, num_episodes=10000, save_model=5000)
+    # agent = Agent(env.shape, epsilon_decay=0.0001)
+    # agent.train_agent(env, num_episodes=1000, save_model=500, name="model4")
 
-    evaluate_model("models/model_10000.pth", "board2.txt")
+    evaluate_model("models/model4_1000.pth", "board2.txt")
 
 
 
