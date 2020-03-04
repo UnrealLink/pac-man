@@ -1,9 +1,13 @@
+import os
 import gym
 import numpy as np
 from collections import deque
 from tqdm import tqdm
 import copy
 import time
+import matplotlib.pyplot as plt
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 import torch
@@ -28,7 +32,7 @@ class Agent(nn.Module):
         # Define net layers
         self.layer1 = nn.Conv2d( 1, 16, (5, 5), stride=2)
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
-        self.fc     = nn.Linear(size*32, 4)
+        self.fc     = nn.Linear(size*size*32, 4)
 
         # Init layers
         # nn.init.xavier_uniform_(self.layer1.weight)
@@ -123,7 +127,7 @@ class Agent(nn.Module):
         expected_state_action_scores = torch.tensor(reward_batch, device=device) + (next_state_scores * GAMMA)
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_scores, expected_state_action_scores.unsqueeze(1))
+        loss = F.mse_loss(state_action_scores, expected_state_action_scores.unsqueeze(1))
 
         # Optimize the model
         optimizer.zero_grad()
@@ -133,7 +137,7 @@ class Agent(nn.Module):
             param.grad.data.clamp_(-1, 1)
         optimizer.step()
 
-    def train_agent(self, env, num_episodes=1000, save_model=500, name="model"):
+    def train_agent(self, env, num_episodes=1000, save_model=500, eval_model=10, name="model"):
         """
         Train the model on env
         """
@@ -144,7 +148,7 @@ class Agent(nn.Module):
         memory = deque(maxlen=BUFFER_SIZE)
 
         # Optimizer
-        optimizer = torch.optim.RMSprop(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters())
 
         # Create target net to compute loss
         target_agent = Agent(self.input_size)
@@ -160,7 +164,6 @@ class Agent(nn.Module):
             last_observation = Grid.copy(current_observation)
             current_state = current_observation.grid - last_observation.grid
             done = False
-            score = 0
 
             # Run the game
             while not done:
@@ -172,7 +175,6 @@ class Agent(nn.Module):
                 last_observation = Grid.copy(current_observation)
                 current_observation = Grid.copy(observation)
                 next_state = None if done else current_observation.grid - last_observation.grid
-                score += reward
 
                 # Add transition to memory
                 memory.append([current_state, action, reward, next_state])
@@ -193,34 +195,46 @@ class Agent(nn.Module):
             # Saves weights to file
             if episode % save_model == 0:
                 torch.save(self.state_dict(), f"models/{name}_{episode}.pth")
-            
-            scores.append(score)
+
+            # Evaluate agent
+            if episode % eval_model == 0:
+                torch.save(self.state_dict(), f"models/temp/{name}.pth")
+                score = evaluate_model(f"models/temp/{name}.pth", env)
+                os.remove(f"models/temp/{name}.pth")
+                scores.append(score)
 
         # Saves score to file
         with open(f"info/{name}_scores.txt", 'w') as file:
             file.writelines(["%s\n" % item  for item in scores])
 
+        # Plot scores
+        plt.plot([10*(i+1) for i in range(len(scores))], scores)
+        plt.xlabel("Number of episodes")
+        plt.ylabel("Score")
+        plt.show()
 
-def evaluate_model(path, board):
-    env = Env(board, gui_display=True, nb_ghost=1)
-    env.seed(42)
+def evaluate_model(path, env):
+    env.seed(34)
     agent = Agent(env.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
-    observation = env.grid
+    observation = env.reset()
+    max_score = observation.nb_fruits
     while not ended:
-        pygame.time.wait(500)
         action = agent.action(observation)
         observation, reward, ended, _ = env.step(action)
         env.render()
+    return max_score - observation.nb_fruits
 
 if __name__ == "__main__":
-    # env = Env("board2.txt", nb_ghost=1, random_respawn=False)
-    # env.seed(34)
-    # agent = Agent(env.shape, epsilon_decay=0.0001)
-    # agent.train_agent(env, num_episodes=1000, save_model=500, name="model4")
+    env = Env("board2.txt", nb_ghost=1, random_respawn=False)
+    env.seed(34)
+    agent = Agent(env.shape, epsilon_decay=0.0001)
+    agent.train_agent(env, num_episodes=1300, save_model=1300, name="model3")
 
-    evaluate_model("models/model4_1000.pth", "board2.txt")
+    # env = Env("board.txt", nb_ghost=1, gui_display=True)
+    # env.seed(34)
+    # evaluate_model("models/model2_1000.pth", env)
 
 
 

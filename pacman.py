@@ -54,7 +54,7 @@ class Env(object):
         self.actions = list(self.grid.action_map.keys())
         self.gui = None
         if gui_display:
-            self.gui = Gui(self.grid.grid)
+            self.gui = Gui(self.grid)
 
     # Set these in ALL subclasses
     action_space = None
@@ -93,6 +93,8 @@ class Env(object):
         else:
             self.grid.reset(self.board, player_spawn=self.player_spawn, nb_ghost=self.nb_ghost)
         # self.seed(self.base_seed)
+        if self.gui:
+            self.gui = Gui(self.grid)
         return self.grid
 
     def render(self, mode='human'):
@@ -100,7 +102,9 @@ class Env(object):
         Renders the environment.
         """
         if self.gui:
+            pygame.time.wait(250)
             self.gui.render()
+        return
 
     def close(self):
         """
