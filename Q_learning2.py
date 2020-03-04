@@ -225,4 +225,4 @@ if __name__ == "__main__":
 
     w_ = main()
     print("train finished")
-    w_ = main(True, n_episode=1, w=w_, max_horizon=10)
+    w_ = main(test_mode = True, n_episode=1, w=w_, max_horizon=10)
