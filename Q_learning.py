@@ -10,6 +10,19 @@ from pacman import Env
 from grid import Grid
 
 
+act_to_letter = {
+        0 : 'U',
+        1 : 'L',
+        2 : 'D',
+        3 : 'R'
+}
+
+letter_to_act = {
+        'U' : 0,
+        'L' : 1,
+        'D' : 2,
+        'R' : 3
+}
 
 class Agent(object):
 
@@ -22,7 +35,7 @@ class Agent(object):
 
     def act_with_epsilon_greedy(self, index, env):
         possible_moves = env.grid.get_valid_moves(env.grid.positions[0])
-        if np.random.rand() < epsilon:
+        if np.random.rand() < self.epsilon:
             action = possible_moves[np.random.randint(len(possible_moves))]
         else:
             q_values = np.copy(self.q_table[index, :])
@@ -49,23 +62,28 @@ class Agent(object):
         self.epsilon = self.epsilon * self.epsilon_decay
         return
 
-    def evaluate_policy(self, nb_games=50, max_steps=100):
+    def evaluate_policy(self, env, nb_games=50, max_steps=100):
         
         mean_score = 0.
+        mean_reward = 0.
         mean_steps = 0.
 
         for _ in range(nb_games):
             observation = env.reset()
-            state = grid_to_state(observation)
-            index = state_to_index(state)
+            max_score = env.grid.nb_fruits
+            state = self.grid_to_state(observation)
+            index = self.state_to_index(state)
             cumulated_reward = 0
 
             for step_number in range(max_steps):
-                new_observation, reward, done, _ = env.step(act_with_epsilon_greedy(self, index, env))
+                new_observation, reward, done, _ = env.step(self.act_with_epsilon_greedy(index, env))
                 cumulated_reward += reward
+                state = self.grid_to_state(observation)
+                index = self.state_to_index(state)
                 if done:
-                    mean_score += cumulated_reward / nb_games
-                    mean_steps += step_number / nb_games
+                    mean_reward += (cumulated_reward / nb_games)
+                    mean_score += ((max_score - env.grid.nb_fruits) / nb_games)
+                    mean_steps += (step_number / nb_games)
                     break
 
         return mean_score, mean_steps
@@ -109,7 +127,7 @@ class Agent(object):
             for move in pacman_possible_moves:
                 if min_distance_to_ghost_tab[letter_to_act[move]] >= 8:
                     safe_moves.append(move)
-            distances_to_fruits = self.get_closest_fruits(safe_moves, grid)
+            distances_to_fruits = self.get_closest_fruits(grid, safe_moves, pacman_location)
             # print('check2')
             # print(distances_to_fruits)
             for i in range(len(distances_to_fruits)):
@@ -150,8 +168,7 @@ class Agent(object):
             index +=  int(x)*2**i
         return index
 
-    def get_closest_fruits(self, grid, safe_moves):
-        pacman_location = grid.positions[0]
+    def get_closest_fruits(self, grid, safe_moves, pacman_location):
         distances = [-1]*4
         for move in safe_moves:
             start = grid.check_position(utils.index_sum(pacman_location, grid.action_map[move]))
@@ -174,11 +191,11 @@ class Agent(object):
 
 
 
-def train(agent, board='board.txt', epoch=10000, max_horizon=100, evaluation_frequency=1000, number_games_for_evaluation=50, saving_frequency=1000, saving=True, verbose=True):
+def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_frequency=100, number_games_for_evaluation=50, saving_frequency=1000, saving=True, verbose=True):
 
     mean_reward_evolution = []
 
-    env = Env(board=board, random_respawn=True)
+    env = Env(board=board, random_respawn=False)
     
     for game in range(epoch + 1):
         total_reward_of_the_game = 0
@@ -201,164 +218,56 @@ def train(agent, board='board.txt', epoch=10000, max_horizon=100, evaluation_fre
             action = next_action
 
             if done:
-                if game % evaluation_frequency == 0:
-                    mean_reward, mean_steps = agent.evaluate_policy(nb_games=number_games_for_evaluation)
-                    mean_reward_evolution.append(mean_reward)
-                    if verbose:
-                        print(f"Game : {game} \t Reward of the game : {total_reward_of_the_game} \t")
-                        print(f"Mean score of the agent on {number_games_for_evaluation} \t Mean reward: {mean_reward} \t Mean steps before end: {mean_steps}")
-                if saving and game % saving_frequency == 0:
-                    with open(f'../q_tables/q_table_{game}.pickle', 'wb') as q_table_file:
-                        pickle.dump(agent.q_table, q_table_file)
+                break
+
+        if game % evaluation_frequency == 0:
+            mean_reward, mean_steps = agent.evaluate_policy(env, nb_games=number_games_for_evaluation)
+            mean_reward_evolution.append(mean_reward)
+            if verbose:
+                print(f"Game : {game} \t Reward of the game : {total_reward_of_the_game} \t")
+                print(f"Mean score of the agent on {number_games_for_evaluation} \t Mean reward: {mean_reward} \t Mean steps before end: {mean_steps}")
+        if saving and game % saving_frequency == 0:
+            with open(f'../agents/agent_{game}.pickle', 'wb') as agent_file:
+                pickle.dump(agent, agent_file)
 
         agent.update_epsilon()
 
     plt.figure()
-    plt.plot(range(epoch//evaluation_frequency), mean_reward_evolution)
+    plt.plot(range(epoch//evaluation_frequency+1), mean_reward_evolution)
     plt.title(f"Greedy policy mean reward evolution on {number_games_for_evaluation} game(s)")
     plt.xlabel("Epoch")
     plt.ylabel("Mean reward")
     plt.show()
 
-
-
-def evaluate_model(agent, nb_games, verbose=True):
-
-    pass 
-
-
-act_to_letter = {
-        0 : 'U',
-        1 : 'L',
-        2 : 'D',
-        3 : 'R'
-}
-
-letter_to_act = {
-        'U' : 0,
-        'L' : 1,
-        'D' : 2,
-        'R' : 3
-}
+    return
 
 
 
-def evaluate_model(board, path):
-    env = Env(board=board, random_respawn=False, gui_display=True)
-    ended = False
-    with open(path, 'rb') as q_table_file:
-        q_table = pickle.load(q_table_file)
-    observation = env.grid
-    print(q_table)
-    while not ended:
-        state = grid_to_state(observation)
-        # print(state)
-        index = state_to_index(state)
-        # print(index)
-        action = act_with_epsilon_greedy(index, q_table, env, 0)
-        # print(action)
-        # print(act_to_letter[state[4]*2+state[5]])
-        observation, reward, ended, _ = env.step(action)
-        env.gui.score += reward
-        env.render()
-        pygame.time.wait(250)
-
-def train(board):
-    
-
-    env = Env(board=board, random_respawn=True)
-
-    # Experimental setup
-    n_episode = 10001
-    print("n_episode ", n_episode)
-    max_horizon = 100
-    eval_steps = 10
-
-    # Monitoring perfomance
-    window = deque(maxlen=100)
-    last_100 = 0
-
-    # Init Q-table
-    q_table = np.zeros((2048,4), dtype=np.float)
-    # for index in range(2048):
-    #     state = np.binary_repr(index, width=11)
-    #     prefered_action = 2*int(state[4])+int(state[5])
-    #     q_table[index, prefered_action] = 0.5
-
-    env.reset()
-
-    # Train for n_episode
-    for i_episode in range(n_episode):
-
-        # Reset a cumulative reward for this episode
-        total_return = 0.0
-
-        # Start a new episode and sample the initial state
-        observation = env.reset()
-        # print('...state')
-        state = grid_to_state(observation)
-        # print('...state')
-        index = state_to_index(state)
-
-        # print(f"State : {state}")
-
-
-        # First action in this episode
-        a = act_with_epsilon_greedy(index, q_table, env, epsilon)
-
-        for i_step in range(max_horizon):
-
-            # Act
-            obsevation_prime, reward, done, _ = env.step(a)
-            # print('state_prime...')
-            state_prime = grid_to_state(obsevation_prime)
-            # print('...state_prime')
-            index_prime = state_to_index(state_prime)
-
-            total_return += reward
-
-            a_prime = act_with_epsilon_greedy(index_prime, q_table, env, epsilon)
-
-            # Update a Q value table
-            q_table[index, letter_to_act[a]] = q_learning_update(q_table, index, a, reward, index_prime)
-
-            # Transition to new state
-            state = state_prime
-            a = a_prime
-
-            if done:
-                window.append(total_return)
-                last_100 = window.count(1)
-
-                greedy_success_rate_monitor[i_episode-1,0], greedy_discounted_return_monitor[i_episode-1,0]= evaluate_policy(q_table,env,eval_steps,max_horizon)
-                if verbose and i_episode % 25 == 0:
-                    print("Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tFinal_Reward: {3}\tEpsilon: {4:.3f}\tSuccess Rate: {5:.3f}\tLast_100: {6}".format(i_episode, i_step, total_return, reward, epsilon,greedy_success_rate_monitor[i_episode-1,0],last_100))
-                break
-
-        if i_episode % 1000 == 0:
-            with open(f'../q_tables/q_table_{i_episode}.pickle', 'wb') as q_table_file:
-                pickle.dump(q_table, q_table_file)
-            np.savetxt(f'../q_tables/q_table_{i_episode}.csv', q_table, delimiter=',')
-        # Schedule for epsilon
-        epsilon = decrese_epsilon(i_episode, epsilon)
-
-
-    plt.figure(0)
-    plt.plot(range(0,n_episode,10),greedy_success_rate_monitor[0::10,0])
-    plt.title("Greedy policy with {0} and {1}".format("rl_algorithm", "greedy"))
-    plt.xlabel("Steps")
-    plt.ylabel("Success Rate")
-    plt.show()
+def evaluate_model(path_to_agent_pickle_file, board, nb_games=10):
+    for _ in range(nb_games):
+        env = Env(board=board, random_respawn=False, gui_display=True)
+        ended = False
+        with open(path_to_agent_pickle_file, 'rb') as agent_file:
+            agent = pickle.load(agent_file)
+        agent.epsilon = 0
+        observation = env.grid
+        while not ended:
+            state = agent.grid_to_state(observation)
+            index = agent.state_to_index(state)
+            action = agent.act_with_epsilon_greedy(index, env)
+            observation, reward, ended, _ = env.step(action)
+            env.gui.score += reward
+            env.render()
+            pygame.time.wait(250) 
+    return
 
 def main(board, eval=False):
     if eval: 
-        for i in range (10, 11):
-            print(500*i)
-            for tests in range(10):
-                evaluate_model(board, f'../q_tables/q_table_{10000}.pickle')
+        evaluate_model(f'../agents/agent_{20000}.pickle', board)
     else: 
-        train(board)
+        agent = Agent(np.zeros((2048,4), dtype=np.float))
+        train(agent, board=board)
 
 if __name__ == "__main__":
 
-    main('board.txt', eval=True)
+    main('board2.txt', eval=False)
