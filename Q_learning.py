@@ -2,6 +2,8 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
+import pickle
+import pygame
 
 import utils
 from pacman import Env
@@ -15,6 +17,13 @@ gamma = 0.99
 epsilon = 0.5
 epsilon_decay = 0.999
 verbose = True
+
+def decrese_epsilon(i, epsilon):
+    global epsilon_decay
+    if i >= 2000:
+        return epsilon*epsilon_decay
+    else:
+        return epsilon
 
 act_to_letter = {
         0 : 'U',
@@ -87,26 +96,39 @@ def grid_to_state(grid):
             dangerous_path_counter += 1
         else :
             non_dangerous_path_counter +=1
-    if dangerous_path_counter == len(pacman_possible_moves) or non_dangerous_path_counter == 1:
-        state[4] = min_distance_to_ghost_tab.argmax() & 2
-        state[5] = min_distance_to_ghost_tab.argmax() & 1
+    if non_dangerous_path_counter == 0 or non_dangerous_path_counter == 1:
+        # print('check1')
+        # print(act_to_letter[min_distance_to_ghost_tab.argmax()])
+        state[4] = min_distance_to_ghost_tab.argmax() // 2
+        state[5] = min_distance_to_ghost_tab.argmax() % 2
     else:
         safe_moves = []
         for move in pacman_possible_moves:
-            if min_distance_to_ghost_tab[letter_to_act[move]] > 8:
+            if min_distance_to_ghost_tab[letter_to_act[move]] >= 8:
                 safe_moves.append(move)
         distances_to_fruits = get_closest_fruits(pacman_location, safe_moves, grid)
-        state[4] = np.array([distances_to_fruits[letter_to_act[move]] for move in safe_moves]).argmin() & 2 
-        state[5] = np.array([distances_to_fruits[letter_to_act[move]] for move in safe_moves]).argmin() & 1
+        # print('check2')
+        # print(distances_to_fruits)
+        for i in range(len(distances_to_fruits)):
+            if act_to_letter[i] not in safe_moves or distances_to_fruits[i] == -1 :
+                distances_to_fruits[i] = np.infty
+        # print(distances_to_fruits)
+        # print(act_to_letter[np.array(distances_to_fruits).argmin()])
+        state[4] = np.array(distances_to_fruits).argmin() // 2
+        state[5] = np.array(distances_to_fruits).argmin() % 2
 
     # s6
+    # print('S6...')
     for move in pacman_possible_moves:
+        # print(move)
         test_move = utils.index_sum(pacman_location, grid.action_map[move])
         test_move = grid.check_position(test_move)
         for ghost_location in ghosts_location:
+            # print(grid.distances[test_move][ghost_location])
             if grid.distances[test_move][ghost_location] < 8:
-                state[5+letter_to_act[move]] = 1
-
+                state[6+letter_to_act[move]] = 1
+    # print('...S6')
+    
     # since the ghosts can cut back, we only consider pacman as trapped when he will reach a ghost position whatever the move he makes
     is_trapped = np.zeros(len(pacman_possible_moves))
     for i, move in enumerate(pacman_possible_moves):
@@ -115,7 +137,7 @@ def grid_to_state(grid):
         for ghost_location in ghosts_location:
             if test_move == ghost_location:
                 is_trapped[i] = 1
-    state[9] = int(is_trapped.sum()/len(pacman_possible_moves))
+    state[10] = int(is_trapped.sum()/len(pacman_possible_moves))
     
     return state
 
@@ -126,7 +148,7 @@ def state_to_index(state):
     return int(index)
 
 # Act with epsilon greedy
-def act_with_epsilon_greedy(index, q_table, env):
+def act_with_epsilon_greedy(index, q_table, env, epsilon):
     possible_moves = env.grid.get_valid_moves(env.grid.positions[0])
     if np.random.rand() < epsilon:
         action = possible_moves[np.random.randint(len(possible_moves))]
@@ -155,7 +177,7 @@ def evaluate_policy(q_table, env, n, h):
         index = state_to_index(state)
 
         for step in range(h):
-            new_observation, r, done, _ = env.step(act_with_epsilon_greedy(index, q_table, env))
+            new_observation, r, done, _ = env.step(act_with_epsilon_greedy(index, q_table, env, epsilon))
             discounted_return += np.power(gamma, step) * r
 
             if done:
@@ -165,15 +187,33 @@ def evaluate_policy(q_table, env, n, h):
 
     return success_rate, mean_return
 
-def main():
+def evaluate_model(board, path):
+    env = Env(board=board, random_respawn=False, gui_display=True)
+    ended = False
+    with open(path, 'rb') as q_table_file:
+        q_table = pickle.load(q_table_file)
+    print(q_table.max())
+    observation = env.grid
+    while not ended:
+        pygame.time.wait(250)
+        state = grid_to_state(observation)
+        # print(state)
+        index = state_to_index(state)
+        # print(index)
+        action = act_with_epsilon_greedy(index, q_table, env, 0)
+        # print(action)
+        # print(act_to_letter[state[4]*2+state[5]])
+        observation, reward, ended, _ = env.step(action)
+        env.render()
 
-    global epsilon
-    global tau
+def train(board):
+    
+    global epsilon 
 
-    env = Env()
+    env = Env(board=board, random_respawn=True)
 
     # Experimental setup
-    n_episode = 10000
+    n_episode = 10001
     print("n_episode ", n_episode)
     max_horizon = 100
     eval_steps = 10
@@ -185,11 +225,12 @@ def main():
     greedy_success_rate_monitor = np.zeros([n_episode,1])
     greedy_discounted_return_monitor = np.zeros([n_episode,1])
 
-    behaviour_success_rate_monitor = np.zeros([n_episode,1])
-    behaviour_discounted_return_monitor = np.zeros([n_episode,1])
-
     # Init Q-table
     q_table = np.zeros((2048,4), dtype=np.float)
+    for index in range(2048):
+        state = np.binary_repr(index, width=11)
+        prefered_action = 2*int(state[4])+int(state[5])
+        q_table[index, prefered_action] = 10
 
     env.reset()
 
@@ -201,23 +242,29 @@ def main():
 
         # Start a new episode and sample the initial state
         observation = env.reset()
+        # print('...state')
         state = grid_to_state(observation)
+        # print('...state')
         index = state_to_index(state)
+
+        # print(f"State : {state}")
 
 
         # First action in this episode
-        a = act_with_epsilon_greedy(index, q_table, env)
+        a = act_with_epsilon_greedy(index, q_table, env, epsilon)
 
         for i_step in range(max_horizon):
-            
+
             # Act
             obsevation_prime, reward, done, _ = env.step(a)
+            # print('state_prime...')
             state_prime = grid_to_state(obsevation_prime)
+            # print('...state_prime')
             index_prime = state_to_index(state_prime)
 
             total_return += reward
 
-            a_prime = act_with_epsilon_greedy(index_prime, q_table, env)
+            a_prime = act_with_epsilon_greedy(index_prime, q_table, env, epsilon)
 
             # Update a Q value table
             q_table[index, letter_to_act[a]] = q_learning_update(q_table, index, a, reward, index_prime)
@@ -231,18 +278,16 @@ def main():
                 last_100 = window.count(1)
 
                 greedy_success_rate_monitor[i_episode-1,0], greedy_discounted_return_monitor[i_episode-1,0]= evaluate_policy(q_table,env,eval_steps,max_horizon)
-                behaviour_success_rate_monitor[i_episode-1,0], behaviour_discounted_return_monitor[i_episode-1,0] = evaluate_policy(q_table,env,eval_steps,max_horizon)
-                if verbose:
+                if verbose and i_episode % 25 == 0:
                     print("Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tFinal_Reward: {3}\tEpsilon: {4:.3f}\tSuccess Rate: {5:.3f}\tLast_100: {6}".format(i_episode, i_step, total_return, reward, epsilon,greedy_success_rate_monitor[i_episode-1,0],last_100))
-                    #print "Episode: {0}\t Num_Steps: {1:>4}\tTotal_Return: {2:>5.2f}\tTermR: {3}\ttau: {4:.3f}".format(i_episode, i_step, total_return, r, tau)
-
                 break
 
-
+        if i_episode % 500 == 0:
+            with open(f'../q_tables/q_table_{i_episode}.pickle', 'wb') as q_table_file:
+                pickle.dump(q_table, q_table_file)
         # Schedule for epsilon
-        epsilon = epsilon * epsilon_decay
-        # Schedule for tau
-        tau = init_tau + i_episode * tau_inc
+        epsilon = decrese_epsilon(i_episode, epsilon)
+
 
     plt.figure(0)
     plt.plot(range(0,n_episode,10),greedy_success_rate_monitor[0::10,0])
@@ -250,14 +295,12 @@ def main():
     plt.xlabel("Steps")
     plt.ylabel("Success Rate")
 
-    plt.figure(1)
-    plt.plot(range(0,n_episode,10),behaviour_success_rate_monitor[0::10,0])
-    plt.title("Behaviour policy with {0} and {1}".format("rl_algorithm", "explore_method"))
-    plt.xlabel("Steps")
-    plt.ylabel("Success Rate")
-    plt.show()
-
+def main(eval=False):
+    if eval: 
+        for i in range (21):
+            evaluate_model('board.txt', f'../q_tables/q_table_{i*500}.pickle')
+    else: 
+        train('board.txt')
 
 if __name__ == "__main__":
-
-    main()
+    main(eval=True)
