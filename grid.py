@@ -31,7 +31,7 @@ class Grid(object):
     def __init__(self):
         pass
 
-    def create(self, board="board.txt", player_spawn=None, ghost_spawn=None):
+    def create(self, board="board.txt", player_spawn=None, ghost_spawn=None, nb_ghost=4):
         with open(board, 'r') as board_file:
             self.player_spawn = tuple(map(lambda x : int(x), board_file.readline().split()))
             self.ghost_spawn  = tuple(map(lambda x : int(x), board_file.readline().split()))
@@ -40,11 +40,13 @@ class Grid(object):
             self.player_spawn = player_spawn
         if ghost_spawn: 
             self.player_spawn = ghost_spawn
-        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts
-        self.old_positions = [(0,0)]*5
+        self.nb_ghost = nb_ghost
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*self.nb_ghost   # 0: player, 1-self.nb_ghost: ghosts
+        self.old_positions = [(0,0)]*(1+self.nb_ghost)
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)
+        self.last_point_taken = 0
         self.distances = {}
         self.compute_distances()
 
@@ -54,7 +56,9 @@ class Grid(object):
         new_grid.grid = np.copy(grid.grid)
         new_grid.player_spawn = grid.player_spawn
         new_grid.ghost_spawn  = grid.ghost_spawn
+        new_grid.nb_ghost = grid.nb_ghost
         new_grid.positions = list(grid.positions)
+        new_grid.old_positions = list(grid.old_positions)
         new_grid.nb_fruits = grid.nb_fruits
         new_grid.distances = grid.distances
         return new_grid
@@ -68,10 +72,12 @@ class Grid(object):
             self.player_spawn = player_spawn
         if ghost_spawn: 
             self.player_spawn = ghost_spawn
-        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*self.nb_ghost   # 0: player, 1-self.nb_ghost: ghosts
+        self.old_positions = [(0,0)]*(1+self.nb_ghost)
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)
+        self.last_point_taken = 0
 
     def update(self, actions):
         """ 
@@ -79,6 +85,7 @@ class Grid(object):
         actions is a char list of size 5 containing the action ('U', 'D', 'R', 'L')
         return (reward, ended) tuple.
         """
+        self.last_point_taken += 1
         self.old_positions = copy(self.positions)
         for i, action in enumerate(actions):
             self.grid[self.positions[i]] = self.grid[self.positions[i]] - 2**(i+1)
@@ -102,21 +109,29 @@ class Grid(object):
         Check if the player got a reward for moving to his position
         Remove the fruit if needed
         """
+        for i, position in enumerate(self.positions[1:]):
+            if self.positions[0] == position:
+                return -50
+        for i, position in enumerate(self.old_positions[1:]):
+            if self.positions[0] == position and self.old_positions[0] == self.positions[i+1]:
+                return -50
         if self.grid[self.positions[0]] & 1:
             self.grid[self.positions[0]] = self.grid[self.positions[0]] - 1
             self.nb_fruits -= 1
             if self.nb_fruits == 0:
                 return 101
-            for i, position in enumerate(self.positions[1:]):
-                if self.positions[0] == position:
-                    return -20
-            return 1
+            self.last_point_taken = 0
+            return 10
+        if self.last_point_taken > 5:
+            return -10
         return 0
 
     def check_ending(self):
         """
         Check if the game is over
         """
+        if self.last_point_taken > 20:
+            return True
         if self.nb_fruits == 0:
             return True
         for i, position in enumerate(self.positions[1:]):
