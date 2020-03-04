@@ -20,6 +20,7 @@ class Agent(nn.Module):
         self.input_size = input_size
         size = ((input_size[0] - 5) // 2 + 1) - 2
         self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=2)
+        self.bn1 = nn.BatchNorm2d(16)
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
         self.fc1     = nn.Linear(size*32, 256)
         self.fc2     = nn.Linear(256, 4)
@@ -35,16 +36,29 @@ class Agent(nn.Module):
 
         self.training = training
 
+    def process_input(self, observation):
+        x = np.stack([
+            ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, self.input_size[0], self.input_size[1])) for i in range(8)
+        ], axis=0).reshape((1, 8, self.input_size[0], self.input_size[1]))
+        return torch.Tensor(x)
+
+    def forward(self, x):
+        x = F.relu(self.bn1(self.layer1(x)))
+        x = F.relu(self.layer2(x))
+        x = self.fc1(x.view(-1))
+        x = self.fc2(x)
+        return x
+
     def action(self, observation):
         actions = list(observation.action_map.keys())
         valid_moves = observation.get_valid_moves(observation.positions[0])
-        print(valid_moves)
         if np.random.random() < self.epsilon:
             self.decay()
             return valid_moves[np.random.randint(0, len(valid_moves))]
         
         self.decay()
         probas = self.forward(self.process_input(observation))
+        print(probas.detach().numpy())
         best_move = None
         max_proba = - np.infty
         for move in valid_moves:
@@ -74,19 +88,6 @@ class Agent(nn.Module):
                 best_move = move
         return best_move, max_proba
 
-    def process_input(self, observation):
-        x = np.stack([
-            ((observation.grid & 2**(i+1)) // 2**(i+1)).reshape((1, self.input_size[0], self.input_size[1])) for i in range(8)
-        ], axis=0).reshape((1, 8, self.input_size[0], self.input_size[1]))
-        return torch.Tensor(x)
-
-    def forward(self, x):
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        x = self.fc1(x.view(-1))
-        x = self.fc2(x)
-        return x
-
     def update_weights(self, model):
         if hasattr(model, "state_dict"):
             self.load_state_dict(model.state_dict())
@@ -108,7 +109,7 @@ class Agent(nn.Module):
         return target_score
 
 def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.95, n_episode = 1000,
-          start_computing_loss = 10, update_target_agent = 10000, save_model=500, name="model"):
+          start_computing_loss = 32, update_target_agent = 10000, save_model=500, name="model"):
     target_agent = Agent(agent.input_size, epsilon=0)
     target_agent.update_weights(agent)
     agent.training = True
@@ -137,9 +138,6 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
                 target_score = target_agent.target_prediction(batch, target_agent, gamma)
 
                 batch_score = [x[-1] for x in batch]
-                print(batch_score)
-                print(target_score)
-                print()
                 target_score = torch.Tensor(target_score)
                 for i, scores in enumerate(zip(batch_score, target_score)):
                     s, target_s = scores
@@ -179,17 +177,17 @@ def evaluate_model(path, board):
         env.render()
 
 if __name__ == "__main__":
-    env = Env(random_respawn=False, board="board2.txt", nb_ghost=1)
+    env = Env(random_respawn=True, board="board2.txt", nb_ghost=1)
     env.seed(42)
-    agent = Agent(env.grid.grid.shape)
+    agent = Agent(env.grid.grid.shape, epsilon_decay=0.001)
 
     learning_rate = 0.00001
 
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=100, save_model=1000, name="run21")
-    # evaluate_model('models/run20_1000.pth', "board2.txt")
+    train(env, agent, optimizer, loss, n_episode=3000, save_model=1000, name="run22")
+    # evaluate_model('models/run22_3000.pth', "board2.txt")
 
 
 

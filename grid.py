@@ -32,6 +32,9 @@ class Grid(object):
         pass
 
     def create(self, board="board.txt", player_spawn=None, ghost_spawn=None, nb_ghost=4):
+        """
+        Initialize a grid with the parameters contained in board
+        """
         with open(board, 'r') as board_file:
             self.player_spawn = tuple(map(lambda x : int(x), board_file.readline().split()))
             self.ghost_spawn  = tuple(map(lambda x : int(x), board_file.readline().split()))
@@ -52,6 +55,9 @@ class Grid(object):
 
     @classmethod
     def copy(cls, grid):
+        """
+        Copy a grid into a new instance
+        """
         new_grid = Grid()
         new_grid.grid = np.copy(grid.grid)
         new_grid.player_spawn = grid.player_spawn
@@ -63,7 +69,10 @@ class Grid(object):
         new_grid.distances = grid.distances
         return new_grid
 
-    def reset(self, board="board.txt", player_spawn=None, ghost_spawn=None):
+    def reset(self, board="board.txt", player_spawn=None, ghost_spawn=None, nb_ghost=4):
+        """
+        Reset a grid with the parameters contained in board (does not compute the distances again)
+        """
         with open(board, 'r') as board_file:
             self.player_spawn = tuple(map(lambda x : int(x), board_file.readline().split()))
             self.ghost_spawn  = tuple(map(lambda x : int(x), board_file.readline().split()))
@@ -109,21 +118,29 @@ class Grid(object):
         Check if the player got a reward for moving to his position
         Remove the fruit if needed
         """
+        # See if a ghost has eaten the agent
         for i, position in enumerate(self.positions[1:]):
             if self.positions[0] == position:
                 return -50
         for i, position in enumerate(self.old_positions[1:]):
             if self.positions[0] == position and self.old_positions[0] == self.positions[i+1]:
                 return -50
+
+        # See if the agent has eaten a fruit
         if self.grid[self.positions[0]] & 1:
             self.grid[self.positions[0]] = self.grid[self.positions[0]] - 1
             self.nb_fruits -= 1
-            if self.nb_fruits == 0:
-                return 101
+            
+            if self.nb_fruits == 0: # If agent cleared the game
+                return 110
+
             self.last_point_taken = 0
             return 10
+
+        # See if the agent has been idle for too long
         if self.last_point_taken > 5:
             return -10
+
         return 0
 
     def check_ending(self):
@@ -164,7 +181,7 @@ class Grid(object):
 
     def compute_distances(self):
         """
-        Compute distance between every possible tiles
+        Compute distance between every possible tiles (Djikstra's algorithm on all free tiles)
         """
         for x in range(self.grid.shape[0]):
             for y in range(self.grid.shape[1]):

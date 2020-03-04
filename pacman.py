@@ -43,6 +43,7 @@ class Env(object):
         self.board = board
         self.grid = Grid()
         self.random_respawn = random_respawn
+        self.player_spawn = player_spawn
         self.nb_ghost = nb_ghost
         self.grid.create(board, player_spawn=player_spawn, nb_ghost=nb_ghost)
         self.free_tiles = np.argwhere(64 - (self.grid.grid & 64))
@@ -50,6 +51,7 @@ class Env(object):
         self.seed(self.base_seed)
         self.ghosts = [Ghost(i+1, 'follow') for i in range(nb_ghost)]
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
+        self.actions = list(self.grid.action_map.keys())
         self.gui = None
         if gui_display:
             self.gui = Gui(self.grid.grid)
@@ -89,7 +91,7 @@ class Env(object):
             player_spawn = tuple(self.free_tiles[np.random.randint(0, len(self.free_tiles))])
             self.grid.reset(self.board, player_spawn=player_spawn, nb_ghost=self.nb_ghost)
         else:
-            self.grid.reset(self.board)
+            self.grid.reset(self.board, player_spawn=self.player_spawn, nb_ghost=self.nb_ghost)
         # self.seed(self.base_seed)
         return self.grid
 
@@ -112,6 +114,10 @@ class Env(object):
         """
         np.random.seed(seed)
         return
+
+    @property
+    def shape(self):
+        return self.grid.grid.shape
 
     @property
     def unwrapped(self):
