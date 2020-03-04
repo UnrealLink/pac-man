@@ -21,11 +21,13 @@ class Agent(nn.Module):
         size = ((input_size[0] - 5) // 2 + 1) - 2
         self.layer1 = nn.Conv2d( 8, 16, (5, 5), stride=2)
         self.layer2 = nn.Conv2d(16, 32, (3, 3), stride=1)
-        self.fc     = nn.Linear(size*32, 4)
+        self.fc1     = nn.Linear(size*32, 256)
+        self.fc2     = nn.Linear(256, 4)
 
-        nn.init.xavier_normal_(self.layer1.weight)
-        nn.init.xavier_normal_(self.layer2.weight)
-        nn.init.xavier_normal_(self.fc.weight)
+        nn.init.xavier_uniform_(self.layer1.weight)
+        nn.init.xavier_uniform_(self.layer2.weight)
+        nn.init.xavier_uniform_(self.fc1.weight)
+        nn.init.xavier_uniform_(self.fc2.weight)
 
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
@@ -36,7 +38,7 @@ class Agent(nn.Module):
     def action(self, observation):
         actions = list(observation.action_map.keys())
         valid_moves = observation.get_valid_moves(observation.positions[0])
-        
+        print(valid_moves)
         if np.random.random() < self.epsilon:
             self.decay()
             return valid_moves[np.random.randint(0, len(valid_moves))]
@@ -44,7 +46,7 @@ class Agent(nn.Module):
         self.decay()
         probas = self.forward(self.process_input(observation))
         best_move = None
-        max_proba = 0
+        max_proba = - np.infty
         for move in valid_moves:
             proba = probas[actions.index(move)]
             if proba > max_proba:
@@ -81,7 +83,8 @@ class Agent(nn.Module):
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        x = self.fc(x.view(-1))
+        x = self.fc1(x.view(-1))
+        x = self.fc2(x)
         return x
 
     def update_weights(self, model):
@@ -118,9 +121,13 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
     for episode in tqdm(range(n_episode)):
         ended = False
         observation = Grid.copy(env.reset())
+        env.render()
         while not ended:
             action, score = agent.action_with_score(observation)
             next_obs, reward, ended, _ = env.step(action)
+            # print(env.grid.grid)
+            # print(reward)
+            # pygame.time.wait(1000)
             if score:
                 buffer.append([observation, action, reward, next_obs, ended, score])
 
@@ -130,6 +137,9 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
                 target_score = target_agent.target_prediction(batch, target_agent, gamma)
 
                 batch_score = [x[-1] for x in batch]
+                print(batch_score)
+                print(target_score)
+                print()
                 target_score = torch.Tensor(target_score)
                 for i, scores in enumerate(zip(batch_score, target_score)):
                     s, target_s = scores
@@ -155,9 +165,9 @@ def train(env, agent, optimizer, loss, buffer_size=100, batch_size=32, gamma=0.9
     with open(f"info/{name}_scores.txt", 'w') as file:
         file.writelines(["%s\n" % item  for item in all_scores])
 
-def evaluate_model(path, board, player_spawn=None):
-    env = Env(board, gui_display=True, player_spawn=player_spawn)
-    env.seed()
+def evaluate_model(path, board):
+    env = Env(board, gui_display=True, nb_ghost=1)
+    env.seed(42)
     agent = Agent(env.grid.grid.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
@@ -169,17 +179,17 @@ def evaluate_model(path, board, player_spawn=None):
         env.render()
 
 if __name__ == "__main__":
-    env = Env(random_respawn=False, board="board2.txt")
+    env = Env(random_respawn=False, board="board2.txt", nb_ghost=1)
     env.seed(42)
     agent = Agent(env.grid.grid.shape)
 
-    learning_rate = 0.0001
+    learning_rate = 0.00001
 
     loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
 
-    train(env, agent, optimizer, loss, n_episode=2000, save_model=1000, name="run10")
-    # evaluate_model('models/run10_2000.pth', "board2.txt")
+    train(env, agent, optimizer, loss, n_episode=100, save_model=1000, name="run21")
+    # evaluate_model('models/run20_1000.pth', "board2.txt")
 
 
 

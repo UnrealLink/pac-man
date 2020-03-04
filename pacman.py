@@ -36,26 +36,19 @@ class Env(object):
     reward_range = (-float('inf'), float('inf'))
     spec = None
 
-    def __init__(self, board="board.txt", player_spawn=None, seed=None, random_respawn=False, gui_display=False):
+    def __init__(self, board="board.txt", player_spawn=None, nb_ghost=4, seed=None, random_respawn=False, gui_display=False):
         """
         Create a pacman env from a txt board
         """
         self.board = board
         self.grid = Grid()
         self.random_respawn = random_respawn
-        if player_spawn:
-            self.grid.create(board, player_spawn=player_spawn)
-        else:
-            self.grid.create(board)
+        self.nb_ghost = nb_ghost
+        self.grid.create(board, player_spawn=player_spawn, nb_ghost=nb_ghost)
         self.free_tiles = np.argwhere(64 - (self.grid.grid & 64))
         self.base_seed = seed
         self.seed(self.base_seed)
-        self.ghosts = []
-        ghost1 = Ghost(1, 'follow')
-        ghost2 = Ghost(2, 'follow')
-        ghost3 = Ghost(3, 'follow')
-        ghost4 = Ghost(4, 'follow')
-        self.ghosts = [ghost1, ghost2, ghost3, ghost4]
+        self.ghosts = [Ghost(i+1, 'follow') for i in range(nb_ghost)]
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
         self.gui = None
         if gui_display:
@@ -94,7 +87,7 @@ class Env(object):
         """
         if self.random_respawn:
             player_spawn = tuple(self.free_tiles[np.random.randint(0, len(self.free_tiles))])
-            self.grid.reset(self.board, player_spawn=player_spawn)
+            self.grid.reset(self.board, player_spawn=player_spawn, nb_ghost=self.nb_ghost)
         else:
             self.grid.reset(self.board)
         # self.seed(self.base_seed)
