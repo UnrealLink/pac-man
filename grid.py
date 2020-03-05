@@ -81,7 +81,7 @@ class Grid(object):
             self.player_spawn = player_spawn
         if ghost_spawn: 
             self.player_spawn = ghost_spawn
-        self.positions = [self.player_spawn] + [self.ghost_spawn]*4   # 0: player, 1-4: ghosts 
+        self.positions = [self.player_spawn] + [self.ghost_spawn]*nb_ghost   # 0: player, 1-4: ghosts 
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)
@@ -146,7 +146,7 @@ class Grid(object):
         """
         Check if the game is over
         """
-        if self.last_point_taken > 20:
+        if self.last_point_taken > 30:
             return True
         if self.nb_fruits == 0:
             return True

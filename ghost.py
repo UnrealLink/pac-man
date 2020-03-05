@@ -22,7 +22,7 @@ class Ghost(object):
 					and tries to get closer to the pacman with probability 0.5
 	
 	"""	
-	behaviour_list = ['random', 'follow', 'flee', 'mixed']
+	behaviour_list = ['follow', 'random', 'flee', 'mixed']
 
 	def __init__(self, id, behaviour):
 		self.id = id

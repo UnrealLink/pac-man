@@ -214,7 +214,7 @@ class Agent(nn.Module):
         plt.show()
 
 def evaluate_model(path, env):
-    env.seed(34)
+    env.seed(42)
     agent = Agent(env.shape, epsilon=0)
     agent.load_state_dict(torch.load(path))
     ended = False
@@ -227,14 +227,14 @@ def evaluate_model(path, env):
     return max_score - observation.nb_fruits
 
 if __name__ == "__main__":
-    env = Env("board2.txt", nb_ghost=1, random_respawn=False)
-    env.seed(34)
+    env = Env("board2.txt", nb_ghost=2, random_respawn=False)
+    env.seed(42)
     agent = Agent(env.shape, epsilon_decay=0.0001)
-    agent.train_agent(env, num_episodes=1300, save_model=1300, name="model3")
+    agent.train_agent(env, num_episodes=1500, save_model=1500, name="model7")
 
-    # env = Env("board.txt", nb_ghost=1, gui_display=True)
-    # env.seed(34)
-    # evaluate_model("models/model2_1000.pth", env)
+    # env = Env("board2.txt", nb_ghost=2, gui_display=True)
+    # env.seed()
+    # evaluate_model("models/model3_1300.pth", env)
 
 
 

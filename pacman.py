@@ -49,7 +49,8 @@ class Env(object):
         self.free_tiles = np.argwhere(64 - (self.grid.grid & 64))
         self.base_seed = seed
         self.seed(self.base_seed)
-        self.ghosts = [Ghost(i+1, 'follow') for i in range(nb_ghost)]
+        behaviours = Ghost.behaviour_list
+        self.ghosts = [Ghost(i+1, behaviours[i]) for i in range(nb_ghost)]
         self.action_space = self.grid.get_valid_moves(self.grid.positions[0])
         self.actions = list(self.grid.action_map.keys())
         self.gui = None
