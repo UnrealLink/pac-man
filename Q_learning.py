@@ -34,6 +34,12 @@ class Agent(object):
         self.alpha = alpha
 
     def act_with_epsilon_greedy(self, index, env):
+        '''
+        Return the action that should be performed by the agent using an epsilon greedy philosophy.
+        
+        index is the integer value that represents by the state in which the agent is. In other words, binary_repr(index) = state.
+        env is the environment (instance of Env).
+        '''
         possible_moves = env.grid.get_valid_moves(env.grid.positions[0])
         if np.random.rand() < self.epsilon:
             action = possible_moves[np.random.randint(len(possible_moves))]
@@ -54,16 +60,24 @@ class Agent(object):
         return action
     
     def update_q_table(self, index, next_index, action, reward):
+        '''
+        Update the q_table depending on the move made.
+        '''
         td = reward + self.gamma * np.max(self.q_table[next_index, :]) - self.q_table[index, letter_to_act[action]]
         self.q_table[index, letter_to_act[action]] = self.q_table[index, letter_to_act[action]] + self.alpha * td
         return 
 
     def update_epsilon(self):
+        '''
+        Update epsilon.
+        '''
         self.epsilon = self.epsilon * self.epsilon_decay
         return
 
     def evaluate_policy(self, env, nb_games=1, max_steps=100):
-        
+        '''
+        Return the mean score and the mean step number the agent made on nb_games. 
+        '''
         save_epsilon = self.epsilon
         self.epsilon = 0
 
@@ -123,8 +137,6 @@ class Agent(object):
             else :
                 non_dangerous_path_counter +=1
         if non_dangerous_path_counter == 0 or non_dangerous_path_counter == 1:
-            # print('check1')
-            # print(act_to_letter[min_distance_to_ghost_tab.argmax()])
             state[4] = min_distance_to_ghost_tab.argmax() & 2
             state[5] = min_distance_to_ghost_tab.argmax() & 1
         else:
@@ -133,29 +145,22 @@ class Agent(object):
                 if min_distance_to_ghost_tab[letter_to_act[move]] >= 8:
                     safe_moves.append(move)
             distances_to_fruits = self.get_closest_fruits(grid, safe_moves, pacman_location)
-            # print('check2')
-            # print(distances_to_fruits)
             for i in range(len(distances_to_fruits)):
                 if act_to_letter[i] not in safe_moves or distances_to_fruits[i] == -1 :
                     distances_to_fruits[i] = np.infty
-            # print(distances_to_fruits)
-            # print(act_to_letter[np.array(distances_to_fruits).argmin()])
             state[4] = np.array(distances_to_fruits).argmin() & 2
             state[5] = np.array(distances_to_fruits).argmin() & 1
 
-        # s6
-        # print('S6...')
+        # s6 to s9
         for move in pacman_possible_moves:
-            # print(move)
             test_move = utils.index_sum(pacman_location, grid.action_map[move])
             test_move = grid.check_position(test_move)
             for ghost_location in ghosts_location:
-                # print(grid.distances[test_move][ghost_location])
                 if grid.distances[test_move][ghost_location] < 8:
                     state[6+letter_to_act[move]] = 1
-        # print('...S6')
         
-        # since the ghosts can cut back, we only consider pacman as trapped when he will reach a ghost position whatever the move he makes
+        # s10
+        # since the ghosts can cut back, we only consider pacman as trapped when he will reach a ghost position whatever move he makes
         is_trapped = np.zeros(len(pacman_possible_moves))
         for i, move in enumerate(pacman_possible_moves):
             test_move = utils.index_sum(pacman_location, grid.action_map[move])
@@ -168,12 +173,21 @@ class Agent(object):
         return state
     
     def state_to_index(self, state):
+        '''
+        Convert the state into an integer called index. 
+        In other words, binary_repr(index) = state.
+        '''
         index = 0
         for i, x in enumerate(state):
             index +=  int(x)*2**i
         return index
 
     def get_closest_fruits(self, grid, safe_moves, pacman_location):
+        '''
+        Return the list of the distance of the closest fruit depending on the direction.
+        To be more specific:
+            distance[i] is equal to the distance to the closest fruit if the Pac-Man repectively goes up, left, down, right if there is no wall in this direction, -1 otherwise
+        '''
         distances = [-1]*4
         for move in safe_moves:
             start = grid.check_position(utils.index_sum(pacman_location, grid.action_map[move]))
@@ -194,10 +208,21 @@ class Agent(object):
                         queue = [(new_position, distance)] + queue
         return distances
 
-
-
 def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_frequency=50, number_games_for_evaluation=50, saving_frequency=50, saving=True, verbose=True):
-
+    '''
+    Train the agent.
+    Arguments
+    ----------
+    agent: an instance of Agent
+    board: the path to the board on which the agent is trained
+    epoch: the number of episodes of training
+    max_horizon: the maximum number of moves during a game
+    evaluation_frequency: the frequency of evaluation of the agent
+    number_games_for_evaluation: the number of games used to evaluate the agent performance
+    saving_frequency: the frequency at which the agent is saved
+    saving: boolean used to specify whether to save or not the agent 
+    verbose: boolean used to specify whether to display training information or not
+    '''
     mean_reward_evolution = []
 
     env = Env(board=board, random_respawn=False, nb_ghost=1)
@@ -248,9 +273,15 @@ def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_freq
 
     return
 
-
-
-def evaluate_model(path_to_agent_pickle_file, board, nb_games=10):
+def evaluate_agent(path_to_agent_pickle_file, board, nb_games=10):
+    '''
+    Evaluate a saved agent by displaying games
+    Arguments
+    ----------
+    path_to_agent_pickle_file: path to the pickle file of a saved agent
+    board: the path to the board on which the agent is evaluated
+    nb_games: number of games to play
+    '''
     for _ in range(nb_games):
         env = Env(board=board, random_respawn=False, gui_display=True, nb_ghost=1)
         max_fruits = env.grid.nb_fruits
@@ -271,11 +302,10 @@ def evaluate_model(path_to_agent_pickle_file, board, nb_games=10):
 
 def main(board, eval=False):
     if eval: 
-        evaluate_model(f'../agents/agent_{5000}.pickle', board)
+        evaluate_agent(f'../agents/agent_{5000}.pickle', board)
     else: 
         agent = Agent(np.zeros((2048,4), dtype=np.float))
         train(agent, board=board)
 
 if __name__ == "__main__":
-
     main('board2.txt', eval=True)
