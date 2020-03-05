@@ -15,7 +15,7 @@ The *models* and *scores* folders contains *.txt* and *.pth* saved from training
 
 ## How to use
 
-If you want to train a model using Approximate Q-Learning, 
+If you want to train a model using Approximate Q-Learning, uncomment the corresponding lines in the main function at the end of *Q_learning.py* and run the file.
 
 If you want to train a model using Deep Q-Networks, uncomment the corresponding lines in the main function at the end of *DQN.py* and run the file.
 
