@@ -130,13 +130,6 @@ if __name__ == "__main__":
 	env = Env(gui_display=True)
 	env.render()
 
-	ghost1 = Ghost(1, 'random')
-	ghost2 = Ghost(2, 'follow')
-	ghost3 = Ghost(3, 'flee')
-	ghost4 = Ghost(4, 'mixed')
-	ghosts = [ghost1, ghost2, ghost3, ghost4]
-
-
 	action = 'L'
 
 	while True :
