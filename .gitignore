@@ -3,5 +3,5 @@
 __pycache__/
 models/*.pth
 .vscode/
-info/*.txt
+scores/*.txt
 models/old_models
