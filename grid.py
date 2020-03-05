@@ -43,9 +43,9 @@ class Grid(object):
             self.player_spawn = player_spawn
         if ghost_spawn: 
             self.ghost_spawn = ghost_spawn
+        self.nb_ghost = nb_ghost
         self.old_positions = [(0,0)]*(1+self.nb_ghost)
         self.positions = [self.player_spawn] + [self.ghost_spawn]*self.nb_ghost   # 0: player, 1-self.nb_ghost: ghosts
-        self.nb_ghost = nb_ghost
         for i, position in enumerate(self.positions):
             self.grid[position] = self.grid[position] + 2**(i+1)
         self.nb_fruits = np.sum(self.grid.reshape(-1) & 1)

@@ -62,8 +62,11 @@ class Agent(object):
         self.epsilon = self.epsilon * self.epsilon_decay
         return
 
-    def evaluate_policy(self, env, nb_games=50, max_steps=100):
+    def evaluate_policy(self, env, nb_games=1, max_steps=100):
         
+        save_epsilon = self.epsilon
+        self.epsilon = 0
+
         mean_score = 0.
         mean_reward = 0.
         mean_steps = 0.
@@ -85,6 +88,8 @@ class Agent(object):
                     mean_score += ((max_score - env.grid.nb_fruits) / nb_games)
                     mean_steps += (step_number / nb_games)
                     break
+
+        self.epsilon = save_epsilon
 
         return mean_score, mean_steps
 
@@ -191,11 +196,11 @@ class Agent(object):
 
 
 
-def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_frequency=100, number_games_for_evaluation=50, saving_frequency=1000, saving=True, verbose=True):
+def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_frequency=50, number_games_for_evaluation=50, saving_frequency=50, saving=True, verbose=True):
 
     mean_reward_evolution = []
 
-    env = Env(board=board, random_respawn=False)
+    env = Env(board=board, random_respawn=False, nb_ghost=1)
     
     for game in range(epoch + 1):
         total_reward_of_the_game = 0
@@ -225,18 +230,20 @@ def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_freq
             mean_reward_evolution.append(mean_reward)
             if verbose:
                 print(f"Game : {game} \t Reward of the game : {total_reward_of_the_game} \t")
-                print(f"Mean score of the agent on {number_games_for_evaluation} \t Mean reward: {mean_reward} \t Mean steps before end: {mean_steps}")
+                print(f"Mean score of the agent on {number_games_for_evaluation} games \t Mean reward: {mean_reward} \t Mean steps before end: {mean_steps}")
         if saving and game % saving_frequency == 0:
             with open(f'../agents/agent_{game}.pickle', 'wb') as agent_file:
                 pickle.dump(agent, agent_file)
 
         agent.update_epsilon()
 
-    plt.figure()
-    plt.plot(range(epoch//evaluation_frequency+1), mean_reward_evolution)
-    plt.title(f"Greedy policy mean reward evolution on {number_games_for_evaluation} game(s)")
-    plt.xlabel("Epoch")
-    plt.ylabel("Mean reward")
+    plt.figure(1)
+    plt.plot(np.arange(epoch//evaluation_frequency+1)*evaluation_frequency, mean_reward_evolution)
+    # plt.title(f"Greedy policy mean reward evolution on {number_games_for_evaluation} game(s)")
+    plt.xlabel("Number of episodes")
+    plt.ylabel("Score")
+    plt.ylim([0, 37])
+    plt.savefig(f"../fig_{board}.png")
     plt.show()
 
     return
@@ -245,7 +252,8 @@ def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_freq
 
 def evaluate_model(path_to_agent_pickle_file, board, nb_games=10):
     for _ in range(nb_games):
-        env = Env(board=board, random_respawn=False, gui_display=True)
+        env = Env(board=board, random_respawn=False, gui_display=True, nb_ghost=1)
+        max_fruits = env.grid.nb_fruits
         ended = False
         with open(path_to_agent_pickle_file, 'rb') as agent_file:
             agent = pickle.load(agent_file)
@@ -256,18 +264,18 @@ def evaluate_model(path_to_agent_pickle_file, board, nb_games=10):
             index = agent.state_to_index(state)
             action = agent.act_with_epsilon_greedy(index, env)
             observation, reward, ended, _ = env.step(action)
-            env.gui.score += reward
+            env.gui.score = max_fruits - env.grid.nb_fruits
             env.render()
             pygame.time.wait(250) 
     return
 
 def main(board, eval=False):
     if eval: 
-        evaluate_model(f'../agents/agent_{20000}.pickle', board)
+        evaluate_model(f'../agents/agent_{5000}.pickle', board)
     else: 
         agent = Agent(np.zeros((2048,4), dtype=np.float))
         train(agent, board=board)
 
 if __name__ == "__main__":
 
-    main('board2.txt', eval=False)
+    main('board2.txt', eval=True)

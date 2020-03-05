@@ -57,7 +57,7 @@ class Gui(object):
 		self.screen = pygame.display.set_mode((self.column_number*self.SQUARESIZE, (self.row_number+1)*self.SQUARESIZE))
 
 
-		self.font = font = pygame.font.Font(None, 24)
+		self.font = pygame.font.Font(None, 24)
 
 		self.max_score = grid.nb_fruits
 		self.score = 0
