@@ -300,12 +300,16 @@ def evaluate_agent(path_to_agent_pickle_file, board, nb_games=10):
             pygame.time.wait(250) 
     return
 
-def main(board, eval=False):
+def main(board, path=None, eval=False):
     if eval: 
-        evaluate_agent(f'../agents/agent_{5000}.pickle', board)
+        evaluate_agent(path, board)
     else: 
         agent = Agent(np.zeros((2048,4), dtype=np.float))
         train(agent, board=board)
 
 if __name__ == "__main__":
-    main('board2.txt', eval=True)
+    # Uncomment to train
+    # main('board2.txt')
+    # Uncomment to evaluate
+    # Please make sure to modify the path to the agent you want to evaluate
+    # main('board2.txt', path='../agents/agent_{1300}.pickle', eval=True)
