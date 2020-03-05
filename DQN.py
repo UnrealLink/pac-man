@@ -204,7 +204,7 @@ class Agent(nn.Module):
                 scores.append(score)
 
         # Saves score to file
-        with open(f"info/{name}_scores.txt", 'w') as file:
+        with open(f"scores/{name}_scores.txt", 'w') as file:
             file.writelines(["%s\n" % item  for item in scores])
 
         # Plot scores
@@ -227,16 +227,17 @@ def evaluate_model(path, env):
     return max_score - observation.nb_fruits
 
 if __name__ == "__main__":
-    env = Env("board2.txt", nb_ghost=2, random_respawn=False)
-    env.seed(42)
-    agent = Agent(env.shape, epsilon_decay=0.0001)
-    agent.train_agent(env, num_episodes=1500, save_model=1500, name="model7")
+    # Uncomment this to train a model on the small grid
+    # env = Env("board2.txt", nb_ghost=1, random_respawn=False)
+    # env.seed(42)
+    # agent = Agent(env.shape, epsilon_decay=0.0001)
+    # agent.train_agent(env, num_episodes=1500, save_model=1500, name="test_model")
 
+    # Uncomment this to see what your model is capable of through the gui
     # env = Env("board2.txt", nb_ghost=2, gui_display=True)
     # env.seed()
-    # evaluate_model("models/model3_1300.pth", env)
-
-
+    # evaluate_model("models/test_model_1500.pth", env)
+    return
 
 
 
