@@ -234,10 +234,9 @@ if __name__ == "__main__":
     # agent.train_agent(env, num_episodes=1500, save_model=1500, name="test_model")
 
     # Uncomment this to see what your model is capable of through the gui
-    # env = Env("board2.txt", nb_ghost=2, gui_display=True)
+    # env = Env("board2.txt", nb_ghost=1, gui_display=True)
     # env.seed()
     # evaluate_model("models/test_model_1500.pth", env)
-    return
 
 
 

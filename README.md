@@ -7,11 +7,13 @@ We designed two agents in order to clear the game, one using Approximate Q-Learn
 
 The *pacman.py* file implements the Gym AI Env object representing our Pac-Man game. The board itself is represented by a Grid object implemented in the *grid.py* file reading from either one of the *board.txt* and *board2.txt* files, while the ghost mecanisms are implemented in *ghosts.py*. A user interface is also implemented in *gui.py*.
 
-The RL Agents we created can be found in the *DQN.py*, *Q_learning.py* and *Q_learning2.py* file. All three files can be launch to train models or evaluate ones, according to the options you specify in their main functions.
+The RL Agents we created can be found in the *DQN.py* and *Q_learning.py* file. All three files can be launch to train models or evaluate ones, according to the options you specify in their main functions.
 
 Some useful functions are implemented in *utils.py*
 
 The *models* and *scores* folders contains *.txt* and *.pth* saved from training DQN agents. You should not modify them directly.
+
+As for DQN agents, the Q_learning agents are saved as *.pickle* files in the *Q_learning_agents* folder. You should not modify them directly.
 
 ## How to use
 

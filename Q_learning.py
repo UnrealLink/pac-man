@@ -257,7 +257,7 @@ def train(agent, board='board.txt', epoch=5000, max_horizon=100, evaluation_freq
                 print(f"Game : {game} \t Reward of the game : {total_reward_of_the_game} \t")
                 print(f"Mean score of the agent on {number_games_for_evaluation} games \t Mean reward: {mean_reward} \t Mean steps before end: {mean_steps}")
         if saving and game % saving_frequency == 0:
-            with open(f'../agents/agent_{game}.pickle', 'wb') as agent_file:
+            with open(f'./Q_learning_agents/agent_{game}.pickle', 'wb') as agent_file:
                 pickle.dump(agent, agent_file)
 
         agent.update_epsilon()
@@ -312,4 +312,4 @@ if __name__ == "__main__":
     # main('board2.txt')
     # Uncomment to evaluate
     # Please make sure to modify the path to the agent you want to evaluate
-    # main('board2.txt', path='../agents/agent_{1300}.pickle', eval=True)
+    # main('board2.txt', path='./Q_learning_agents/agent_1300.pickle', eval=True)
