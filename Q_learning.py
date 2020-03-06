@@ -309,7 +309,7 @@ def main(board, path=None, eval=False):
 
 if __name__ == "__main__":
     # Uncomment to train
-    # main('board2.txt')
+    main('board2.txt')
     # Uncomment to evaluate
     # Please make sure to modify the path to the agent you want to evaluate
     # main('board2.txt', path='./Q_learning_agents/agent_1300.pickle', eval=True)
