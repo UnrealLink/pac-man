@@ -313,4 +313,4 @@ if __name__ == "__main__":
     # Uncomment to evaluate
     # Please make sure to modify the path to the agent you want to evaluate
     # main('board2.txt', path='./Q_learning_agents/agent_1300.pickle', eval=True)
-    return 0
+    print("Done")
