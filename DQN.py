@@ -237,7 +237,7 @@ if __name__ == "__main__":
     # env = Env("board2.txt", nb_ghost=1, gui_display=True)
     # env.seed()
     # evaluate_model("models/test_model_1500.pth", env)
-    return 0
+    print("Done")
 
 
 
