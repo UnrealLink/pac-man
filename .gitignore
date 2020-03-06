@@ -5,3 +5,4 @@ models/*.pth
 .vscode/
 scores/*.txt
 models/old_models
+Q_learning_agents/*.pickle
